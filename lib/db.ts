@@ -8,7 +8,10 @@ export interface DatabaseSchema {
   authorAliases: Record<string, number>;
 }
 
-const DB_FILE = path.join(process.cwd(), "database.json");
+// Allow overriding the datastore location (e.g. a mounted volume in Docker).
+const DB_FILE = process.env.DATABASE_FILE
+  ? path.resolve(process.env.DATABASE_FILE)
+  : path.join(process.cwd(), "database.json");
 
 let cachedDb: DatabaseSchema | null = null;
 

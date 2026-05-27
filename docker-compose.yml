@@ -1,0 +1,20 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: paper-manager-cs
+    container_name: paper-manager-cs
+    ports:
+      # App is served under basePath "/paper" -> http://localhost:3000/paper
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_FILE: /app/data/database.json
+    volumes:
+      # Persist the JSON datastore across container rebuilds/restarts
+      - paper-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  paper-data:
