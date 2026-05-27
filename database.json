@@ -1,0 +1,306 @@
+{
+  "papers": [
+    {
+      "id": 1776417276081,
+      "title": "NII-UIT at VBS2025: Multimodal Video Retrieval with LLM Integration and Dynamic Temporal Search",
+      "year": 2025,
+      "venue": "MMM",
+      "authors": "Bao Tran Gia, Tuong Bui Cong Khanh, Tam Le Thi Thanh, CN. Trần Doãn Thuyên, CN. Lê Trần Trọng Khiêm, ThS. Đỗ Văn Tiến, Tien-Dung Mai, TS. Ngô Đức Thành, Duy-Dinh Le, Shin'ichi Satoh",
+      "lecturerIds": [
+        80517,
+        80548,
+        80197,
+        80273
+      ]
+    },
+    {
+      "id": 1776335758178,
+      "title": "Efficient and Distortion-Aware Fisheye Object Detection for Edge Devices",
+      "year": 2025,
+      "venue": "ICCVW",
+      "authors": "Bao Tran Gia, Tuong Bui Cong Khanh, Tam Le Thi Thanh, Hien Ho Trong, ThS. Đỗ Văn Tiến, TS. Ngô Đức Thành, PGS.TS. Lê Đình Duy, Shin'ichi Satoh",
+      "lecturerIds": [
+        80197,
+        80273,
+        1776343380694
+      ],
+      "doi": "10.1109/iccvw69036.2025.00572",
+      "url": "https://doi.org/10.1109/iccvw69036.2025.00572"
+    },
+    {
+      "id": 1776335732655,
+      "title": "A Lightweight and Data-Centric Framework for Real-Time Object Detection in Fisheye Camera",
+      "year": 2025,
+      "venue": "ICCVW",
+      "authors": "An To Vinh, Nguyen Mai Vinh, Nguyen Luong Si, Duy Do Quoc, Duy Trần Khánh, Nguyen Nguyen Hoang, ThS. Đỗ Văn Tiến, TS. Ngô Đức Thành, PGS.TS. Lê Đình Duy, Shin'ichi Satoh",
+      "lecturerIds": [
+        80197,
+        80273,
+        1776343380694
+      ],
+      "doi": "10.1109/iccvw69036.2025.00576",
+      "url": "https://doi.org/10.1109/iccvw69036.2025.00576"
+    },
+    {
+      "id": 1776335670740,
+      "title": "Context-Aware Question Answering for Vietnamese University Admissions via Multi-LLM Architecture",
+      "year": 2025,
+      "venue": "MAPR",
+      "authors": "Le Thi Tam, Hien Ho Trong, Bao Tran Gia, Thua Nguyen, ThS. Đỗ Văn Tiến, TS. Ngô Đức Thành, Ngan Luu-Thuy Nguyen",
+      "lecturerIds": [
+        80197,
+        80273
+      ],
+      "doi": "10.1109/mapr67746.2025.11133885",
+      "url": "https://doi.org/10.1109/mapr67746.2025.11133885"
+    },
+    {
+      "id": 1776335625588,
+      "title": "Robust Traffic Vehicle Detection under Real-World Conditions with Misclassified Vehicles Minimization and Weighted Box Fusion",
+      "year": 2025,
+      "venue": "MAPR",
+      "authors": "Thai Hoang Minh, Long Le Bao, Phat Nguyen Thuan, Thang Nguyen Tien, Huy Nguyen Phong, ThS. Đỗ Văn Tiến, Duy-Dinh Le, TS. Ngô Đức Thành",
+      "lecturerIds": [
+        80197,
+        80273
+      ],
+      "doi": "10.1109/mapr67746.2025.11133808",
+      "url": "https://doi.org/10.1109/mapr67746.2025.11133808"
+    },
+    {
+      "id": 1776335601990,
+      "title": "Skeleton-guided artistic text recognition",
+      "year": 2025,
+      "venue": "IJDAR",
+      "authors": "ThS. Đỗ Văn Tiến, CN. Trần Doãn Thuyên, CN. Lê Trần Trọng Khiêm, PGS.TS. Lê Đình Duy, TS. Ngô Đức Thành",
+      "lecturerIds": [
+        80197,
+        80517,
+        80548,
+        1776343380694,
+        80273
+      ],
+      "doi": "10.1007/s10032-025-00565-3",
+      "url": "https://doi.org/10.1007/s10032-025-00565-3"
+    },
+    {
+      "id": 1776335541454,
+      "title": "NII-UIT at VBS2026: Towards Effective Visual Question Answering for Interactive and Multimodal Video Retrieval",
+      "year": 2026,
+      "venue": "MMM",
+      "authors": "Bao Duy Tran, ThS. Đỗ Văn Tiến, TS. Ngô Đức Thành, PGS.TS. Lê Đình Duy, S. Satoh",
+      "lecturerIds": [
+        80197,
+        80273,
+        1776343380694
+      ],
+      "doi": "10.1007/978-981-95-6963-2_26",
+      "url": "https://doi.org/10.1007/978-981-95-6963-2_26"
+    },
+    {
+      "id": 1776335501945,
+      "title": "Enhancing road object detection in fisheye cameras: An effective framework integrating sahi and hybrid inference",
+      "year": 2024,
+      "venue": "CVPRW",
+      "authors": "Bao Tran Gia, Tuong Bui Cong Khanh, Hien Ho Trong, CN. Trần Doãn Thuyên, ThS. Đỗ Văn Tiến, PGS.TS. Lê Đình Duy, TS. Ngô Đức Thành",
+      "lecturerIds": [
+        80517,
+        80197,
+        1776343380694,
+        80273
+      ]
+    }
+  ],
+  "lecturers": [
+    {
+      "id": 1776343380694,
+      "name": "Lê Đình Duy",
+      "email": "duyld@uit.edu.vn",
+      "title": "PGS.TS",
+      "department": "Khoa Khoa học máy tính"
+    },
+    {
+      "id": 80001,
+      "name": "Phạm Nguyễn Trường An",
+      "email": "truonganpn@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80023,
+      "name": "Nguyễn Thị Ngọc Diễm",
+      "email": "diemntn@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80029,
+      "name": "Mai Tiến Dũng",
+      "email": "dungmt@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80052,
+      "name": "Nguyễn Đình Hiển",
+      "email": "hiennd@uit.edu.vn",
+      "title": "PGS.TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80068,
+      "name": "Ngô Quốc Hưng",
+      "email": "hungnq@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80070,
+      "name": "Huỳnh Thị Thanh Thương",
+      "email": "thuonghtt@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80086,
+      "name": "Ngô Tuấn Kiệt",
+      "email": "kietnt@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80155,
+      "name": "Nguyễn Thị Quý",
+      "email": "quynt@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80167,
+      "name": "Cáp Phạm Đình Thăng",
+      "email": "thangcpd@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80197,
+      "name": "Đỗ Văn Tiến",
+      "email": "tiendv@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80223,
+      "name": "Phạm Thị Thanh Uyên",
+      "email": "uyenptt@uit.edu.vn",
+      "title": "CN",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80226,
+      "name": "Nguyễn Bích Vân",
+      "email": "vannb@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80273,
+      "name": "Ngô Đức Thành",
+      "email": "thanhnd@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80288,
+      "name": "Nguyễn Trọng Chỉnh",
+      "email": "chinhnt@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80382,
+      "name": "Nguyễn Thanh Sơn",
+      "email": "sonnt@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80435,
+      "name": "Lương Ngọc Hoàng",
+      "email": "hoangln@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80511,
+      "name": "Dương Việt Hằng",
+      "email": "hangdv@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80517,
+      "name": "Trần Doãn Thuyên",
+      "email": "thuyentd@uit.edu.vn",
+      "title": "CN",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80518,
+      "name": "Trần Đình Khang",
+      "email": "khangtd@uit.edu.vn",
+      "title": "CN",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80546,
+      "name": "Võ Nguyễn Lê Duy",
+      "email": "duyvnl@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80548,
+      "name": "Lê Trần Trọng Khiêm",
+      "email": "khiemltt@uit.edu.vn",
+      "title": "CN",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80566,
+      "name": "Phan Lê Sang",
+      "email": "sangpl@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80573,
+      "name": "Phan Minh Quân",
+      "email": "quanpm@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80596,
+      "name": "Lê Thanh Bính",
+      "email": "binhlt@uit.edu.vn",
+      "title": "TS",
+      "department": "Khoa KHMT"
+    },
+    {
+      "id": 80606,
+      "name": "Huỳnh Tân Bối",
+      "email": "boiht@uit.edu.vn",
+      "title": "ThS",
+      "department": "Khoa KHMT"
+    }
+  ],
+  "authorAliases": {
+    "thuyen tran doan": 80517,
+    "tien do": 80197,
+    "thanh duc ngo": 80273,
+    "thuyen tran": 80517,
+    "khiem le": 80548,
+    "tien van do": 80197
+  }
+}
