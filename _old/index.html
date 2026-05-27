@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Manager CS — Hệ thống Quản lý Công bố Khoa học</title>
+  <meta name="description" content="Hệ thống quản lý và thống kê bài báo khoa học của Khoa Công nghệ Thông tin. Nhập thông tin, theo dõi và tổng hợp danh sách công bố khoa học.">
+  <meta property="og:title" content="Paper Manager CS — Quản lý Công bố Khoa học">
+  <meta property="og:description" content="Hệ thống quản lý bài báo khoa học cho các thành viên trong Khoa.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- ── Navbar ──────────────────────────────────────── -->
+  <nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
+    <a class="navbar-brand" href="#" id="brand-link">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+        <path d="M8 7h8M8 11h6"/>
+      </svg>
+      Paper Manager
+    </a>
+
+    <ul class="navbar-links" id="navbar-links">
+      <li><a href="#features">Tính năng</a></li>
+      <li><a href="#submit">Nhập bài báo</a></li>
+      <li><a href="#publications">Danh sách</a></li>
+      <li><a href="#statistics">Thống kê</a></li>
+    </ul>
+
+    <a href="#submit" class="navbar-cta">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Thêm bài báo
+    </a>
+
+    <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+  </nav>
+
+  <!-- ── 1. Hero Section ─────────────────────────────── -->
+  <section class="hero" id="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          Khoa Công nghệ Thông tin
+        </div>
+
+        <h1>Quản lý <span>Công bố Khoa học</span> dễ dàng</h1>
+
+        <p class="hero-subtitle">
+          Nền tảng giúp các thành viên trong Khoa nhập thông tin bài báo, thống kê và tổng hợp danh sách công bố khoa học một cách nhanh chóng.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#submit" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Nhập bài báo ngay
+          </a>
+          <a href="#publications" class="btn btn-ghost">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <path d="M9 12h6M9 16h6"/>
+            </svg>
+            Xem danh sách
+          </a>
+        </div>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-number" id="stat-papers">0</div>
+            <div class="hero-stat-label">Bài báo</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-number" id="stat-venues">0</div>
+            <div class="hero-stat-label">Hội nghị / Tạp chí</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-number" id="stat-authors">0</div>
+            <div class="hero-stat-label">Tác giả</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 2. Features Section ─────────────────────────── -->
+  <section class="features" id="features">
+    <div class="container text-center">
+      <span class="section-tag">Tính năng</span>
+      <h2 class="section-title">Tại sao chọn Paper Manager?</h2>
+      <p class="section-subtitle">Giải pháp toàn diện cho việc quản lý và thống kê công bố khoa học của Khoa.</p>
+
+      <div class="features-grid animate-on-scroll">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <h3>Nhập liệu dễ dàng</h3>
+          <p>Form nhập bài báo trực quan, nhanh chóng. Chỉ cần điền thông tin cơ bản: tên đề tài, năm, hội nghị/tạp chí và tác giả.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </div>
+          <h3>Thống kê & Báo cáo</h3>
+          <p>Biểu đồ trực quan theo năm, hội nghị. Tự động tổng hợp số liệu để phục vụ báo cáo và đánh giá hoạt động nghiên cứu.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </div>
+          <h3>Danh sách công bố</h3>
+          <p>Bảng danh sách bài báo chuyên nghiệp với tìm kiếm, sắp xếp và phân trang. Sẵn sàng để tích hợp vào website Khoa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. Paper Submission Form ─────────────────────── -->
+  <section class="form-section" id="submit">
+    <div class="container text-center">
+      <span class="section-tag">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Nhập thông tin
+      </span>
+      <h2 class="section-title">Thêm bài báo mới</h2>
+      <p class="section-subtitle">Điền thông tin bài báo của bạn để đưa vào danh sách công bố khoa học của Khoa.</p>
+
+      <div class="form-wrapper animate-on-scroll">
+        <form id="paper-form">
+          <div id="form-content">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="paper-title">Tên đề tài <span class="required">*</span></label>
+                <input type="text" id="paper-title" class="form-input" placeholder="VD: Deep Learning for Vietnamese NLP..." required>
+              </div>
+
+              <div class="form-group">
+                <label for="paper-year">Năm công bố <span class="required">*</span></label>
+                <input type="number" id="paper-year" class="form-input" placeholder="VD: 2024" min="2000" max="2030" required>
+              </div>
+
+              <div class="form-group">
+                <label for="paper-venue">Hội nghị / Tạp chí <span class="required">*</span></label>
+                <input type="text" id="paper-venue" class="form-input" placeholder="VD: ICML, NeurIPS, RIVF..." required>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="paper-authors">Danh sách tác giả <span class="required">*</span></label>
+                <textarea id="paper-authors" class="form-textarea" placeholder="VD: Nguyen Van A, Tran Thi B, Le Van C" rows="3" required></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="reset-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8"/>
+                  <path d="M3 3v5h5"/>
+                </svg>
+                Đặt lại
+              </button>
+              <button type="submit" class="btn btn-primary">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13"/>
+                  <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+                Gửi bài báo
+              </button>
+            </div>
+          </div>
+
+          <!-- Success State -->
+          <div id="form-success" class="form-success">
+            <div class="form-success-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+            </div>
+            <h3>Thêm thành công!</h3>
+            <p>Bài báo đã được thêm vào danh sách công bố khoa học của Khoa.</p>
+            <button type="button" class="btn btn-primary" id="add-another-btn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Thêm bài báo khác
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. Publications Table ────────────────────────── -->
+  <section class="publications" id="publications">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+          </svg>
+          Công bố khoa học
+        </span>
+        <h2 class="section-title">Danh sách bài báo</h2>
+        <p class="section-subtitle">Tổng hợp toàn bộ công bố khoa học của các thành viên trong Khoa.</p>
+      </div>
+
+      <div class="table-controls animate-on-scroll">
+        <div class="table-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="table-search" placeholder="Tìm kiếm bài báo..." aria-label="Tìm kiếm bài báo">
+        </div>
+        <div class="table-meta">
+          <span>Tổng: <strong id="table-total">0 bài báo</strong></span>
+        </div>
+      </div>
+
+      <div class="table-container animate-on-scroll">
+        <table class="publications-table" id="publications-table">
+          <thead>
+            <tr>
+              <th data-sort="title">
+                Tên đề tài
+                <span class="sort-icon"></span>
+              </th>
+              <th data-sort="year">
+                Năm
+                <span class="sort-icon"></span>
+              </th>
+              <th data-sort="venue">
+                Hội nghị
+                <span class="sort-icon"></span>
+              </th>
+              <th data-sort="authors">
+                Tác giả
+                <span class="sort-icon"></span>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="papers-tbody">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+        <div class="table-pagination">
+          <span class="pagination-info" id="pagination-info"></span>
+          <div class="pagination-buttons" id="pagination-buttons"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 5. Statistics ────────────────────────────────── -->
+  <section class="statistics" id="statistics">
+    <div class="container">
+      <div class="text-center">
+        <span class="section-tag">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 11-6.219-8.56"/>
+          </svg>
+          Thống kê
+        </span>
+        <h2 class="section-title">Tổng quan nghiên cứu</h2>
+        <p class="section-subtitle">Biểu đồ thống kê hoạt động công bố khoa học của Khoa qua các năm.</p>
+      </div>
+
+      <div class="stats-grid animate-on-scroll">
+        <div class="stats-card">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            Bài báo theo năm
+          </h3>
+          <div class="chart-bars" id="year-chart">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <div class="stats-card">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+              <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            </svg>
+            Top hội nghị / tạp chí
+          </h3>
+          <div class="h-bars" id="venue-chart">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 6. How It Works ─────────────────────────────── -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="container text-center">
+      <span class="section-tag">Hướng dẫn</span>
+      <h2 class="section-title">Quy trình 3 bước</h2>
+      <p class="section-subtitle">Chỉ cần 3 bước đơn giản để đưa bài báo của bạn vào danh sách Khoa.</p>
+
+      <div class="steps-grid animate-on-scroll">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </div>
+          <h3>Nhập thông tin</h3>
+          <p>Điền tên đề tài, năm công bố, hội nghị / tạp chí và danh sách tác giả.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </div>
+          <h3>Xác nhận gửi</h3>
+          <p>Kiểm tra lại thông tin và nhấn "Gửi bài báo" để lưu vào hệ thống.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <h3>Công bố trên web</h3>
+          <p>Bài báo tự động xuất hiện trong danh sách và thống kê của Khoa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 7. Footer CTA ───────────────────────────────── -->
+  <section class="footer-cta">
+    <div class="container">
+      <div class="footer-cta-content">
+        <h2>Bắt đầu ngay hôm nay</h2>
+        <p>Hãy đóng góp bài báo của bạn vào danh sách công bố khoa học của Khoa ngay bây giờ.</p>
+        <a href="#submit" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Nhập bài báo
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ──────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
+            <path d="M8 7h8M8 11h6"/>
+          </svg>
+          Paper Manager CS
+        </div>
+        <ul class="footer-links">
+          <li><a href="#features">Tính năng</a></li>
+          <li><a href="#submit">Nhập bài báo</a></li>
+          <li><a href="#publications">Danh sách</a></li>
+          <li><a href="#statistics">Thống kê</a></li>
+        </ul>
+      </div>
+      <div class="footer-copy">
+        &copy; 2024 Khoa Công nghệ Thông tin. Paper Manager CS.
+      </div>
+    </div>
+  </footer>
+
+  <!-- ── Toast ───────────────────────────────────────── -->
+  <div class="toast" id="toast" role="alert" aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+    <span class="toast-message"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
