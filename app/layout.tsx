@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Inconsolata } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
+// WF Visual Sans substitutes (per DESIGN.md): Inter for display/body, Inconsolata for mono.
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
   variable: "--font-sans",
+});
+
+const inconsolata = Inconsolata({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`h-full antialiased ${inter.variable}`}>
+    <html lang="vi" className={`h-full antialiased ${inter.variable} ${inconsolata.variable}`}>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster richColors position="bottom-right" />

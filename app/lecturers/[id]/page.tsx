@@ -151,10 +151,10 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                 <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent"></div>
                 <CardContent className="px-6 pb-6 pt-0 relative">
                   <Avatar className="h-24 w-24 border-4 border-background bg-primary/10 text-primary absolute -top-12">
-                    <AvatarFallback className="text-3xl font-black">{lecturer.name.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="text-3xl font-semibold">{lecturer.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="pt-14">
-                    <h1 className="text-2xl font-bold font-heading leading-tight">{lecturer.name}</h1>
+                    <h1 className="text-2xl font-semibold font-heading leading-tight">{lecturer.name}</h1>
                     <div className="text-muted-foreground mt-1 font-medium">{LECTURER_TITLE_LABELS[lecturer.title] || lecturer.title}</div>
                     <div className="text-sm text-balance mt-3 space-y-1">
                       <p><span className="text-muted-foreground">Đơn vị:</span> <span className="font-semibold">{lecturer.department}</span></p>
@@ -175,12 +175,12 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
-                      <div className="text-3xl font-black text-primary font-heading">{stats.total}</div>
-                      <div className="text-xs uppercase font-bold text-muted-foreground mt-1 tracking-wider">Bài viết</div>
+                      <div className="text-3xl font-semibold text-primary font-heading">{stats.total}</div>
+                      <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Bài viết</div>
                     </div>
                     <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40">
-                      <div className="text-3xl font-black text-indigo-600 font-heading dark:text-indigo-400">{stats.impact}</div>
-                      <div className="text-xs uppercase font-bold text-muted-foreground mt-1 tracking-wider">Điểm Impact</div>
+                      <div className="text-3xl font-semibold text-indigo-600 font-heading dark:text-indigo-400">{stats.impact}</div>
+                      <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Điểm Impact</div>
                     </div>
                   </div>
 
@@ -201,7 +201,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                                <div className={`w-2 h-2 rounded-full ${isHigh ? 'bg-emerald-500' : 'bg-muted-foreground'}`}></div>
                                <span className={isHigh ? 'font-semibold text-foreground' : 'text-muted-foreground'}>{label}</span>
                              </div>
-                             <span className="font-bold">{count}</span>
+                             <span className="font-semibold">{count}</span>
                            </div>
                          )
                       })}
@@ -216,7 +216,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                           const heightPct = maxPapersInOneYear > 0 ? (count / maxPapersInOneYear) * 100 : 0;
                           return (
                             <div key={year} className="flex-1 flex flex-col items-center justify-end group gap-1">
-                              <span className="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity absolute -translate-y-6 bg-foreground text-background px-1.5 py-0.5 rounded shadow z-10">{count}</span>
+                              <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity absolute -translate-y-6 bg-foreground text-background px-1.5 py-0.5 rounded shadow z-10">{count}</span>
                               <div 
                                 className="w-full bg-primary/30 group-hover:bg-primary transition-colors rounded-t-sm relative" 
                                 style={{ height: `${Math.max(4, heightPct)}%` }}
@@ -301,10 +301,10 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                             <TableRow key={paper.id} className="hover:bg-muted/30">
                               <TableCell className="font-medium align-top pl-4 pt-5">{paper.year}</TableCell>
                               <TableCell className="align-top pt-5 pb-6">
-                                <a href={paper.url || "#"} target="_blank" rel="noopener noreferrer" className="font-semibold text-[15px] hover:text-primary hover:underline group flex items-start gap-1 leading-snug">
+                                <Link href={`/papers/${paper.id}`} className="font-semibold text-[15px] hover:text-primary hover:underline group flex items-start gap-1 leading-snug">
                                   {paper.title}
                                   <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 text-primary transition-all shrink-0 mt-1" />
-                                </a>
+                                </Link>
                                 <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2 flex-wrap">
                                   {paper.venue ? <span className="font-medium">{paper.venue}</span> : <i className="text-muted-foreground/60">Chưa rõ nơi đăng</i>}
                                   {paper.venue && (

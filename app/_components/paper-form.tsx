@@ -86,7 +86,7 @@ export function PaperForm({ onSubmit, lecturers }: PaperFormProps) {
         <span className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-primary/8 text-xs font-semibold text-primary uppercase tracking-wider">
           Nhập thông tin
         </span>
-        <h2 className="text-3xl sm:text-4xl font-bold font-heading mb-4">
+        <h2 className="text-3xl sm:text-4xl font-semibold font-heading mb-4">
           Thêm bài báo mới
         </h2>
         <p className="text-muted-foreground max-w-xl mx-auto mb-12">
@@ -233,7 +233,7 @@ export function PaperForm({ onSubmit, lecturers }: PaperFormProps) {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/10 flex items-center justify-center">
                   <CheckCircle2 className="size-8 text-green-600" />
                 </div>
-                <h3 className="text-xl font-bold font-heading text-green-600 mb-2">
+                <h3 className="text-xl font-semibold font-heading text-green-600 mb-2">
                   Thêm thành công!
                 </h3>
                 <p className="text-muted-foreground mb-8">

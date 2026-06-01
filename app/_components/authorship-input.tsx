@@ -76,7 +76,7 @@ export function AuthorshipInput({ lecturers, value, onChange }: AuthorshipInputP
               #{idx + 1}
             </span>
             <div className="flex-1 min-w-0">
-              <span className="font-semibold text-sm block truncate">{author.name}</span>
+              <span className="font-semibold text-sm block break-words">{author.name}</span>
               {author.type === "internal" ? (
                 <div className="flex items-center mt-1">
                   <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 text-[10px] px-1.5 py-0">
@@ -152,7 +152,7 @@ export function AuthorshipInput({ lecturers, value, onChange }: AuthorshipInputP
         
         <div className="flex items-center">
           <div className="flex-1 h-px bg-border/80"></div>
-          <span className="px-3 text-[10px] font-bold text-muted-foreground uppercase">HOẶC</span>
+          <span className="px-3 text-[10px] font-semibold text-muted-foreground uppercase">HOẶC</span>
           <div className="flex-1 h-px bg-border/80"></div>
         </div>
 

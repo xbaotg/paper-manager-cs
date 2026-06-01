@@ -120,10 +120,10 @@ export function LecturerCombobox({
           value !== null ? (isHighConfidence ? "border-green-500/50 bg-green-500/5" : "border-indigo-500/50 bg-indigo-500/5") : "border-input bg-transparent"
         }`}
       >
-        <span className={`truncate ${value === null ? "text-muted-foreground" : "font-medium"}`}>
+        <span className={`truncate min-w-0 ${value === null ? "text-muted-foreground" : "font-medium"}`}>
           {value === null ? nullOptionLabel : `${selectedLecturer?.title || ""}. ${selectedLecturer?.name}`}
         </span>
-        <ChevronDown className="size-4 opacity-50 shrink-0" />
+        <ChevronDown className="size-4 opacity-50 shrink-0 ml-2" />
       </button>
 
       {/* Dropdown */}
@@ -174,17 +174,17 @@ export function LecturerCombobox({
                     }}
                     onMouseEnter={() => setHighlightIndex(idx)}
                   >
-                    <div className="flex flex-col items-start truncate">
-                      <span className={item.id === null ? "italic text-muted-foreground" : "font-medium"}>
+                    <div className="flex flex-col items-start min-w-0 flex-1 text-left">
+                      <span className={`break-words ${item.id === null ? "italic text-muted-foreground" : "font-medium"}`}>
                         {item.id === null ? item.name : `${item.title}. ${item.name}`}
                       </span>
                       {item.id !== null && (
-                        <span className="text-[10px] text-muted-foreground truncate">
+                        <span className="text-[10px] text-muted-foreground break-words">
                           {item.email} {item.department && `- ${item.department}`} {scoreText}
                         </span>
                       )}
                     </div>
-                    {isSelected && <Check className="size-4 shrink-0" />}
+                    {isSelected && <Check className="size-4 shrink-0 ml-2" />}
                   </button>
                 );
               })

@@ -3,17 +3,11 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "./_components/navbar";
 import { Hero } from "./_components/hero";
-import { PaperForm } from "./_components/paper-form";
 import { PublicationsTable } from "./_components/publications-table";
 import { Statistics } from "./_components/statistics";
 import { Footer } from "./_components/footer";
-import {
-  SAMPLE_PAPERS,
-  SAMPLE_LECTURERS,
-  type Paper,
-  type Lecturer,
-} from "@/lib/data";
-import { getDatabase, addPaperServer } from "./actions";
+import { type Paper, type Lecturer } from "@/lib/data";
+import { getDatabase } from "./actions";
 
 export default function Home() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -34,11 +28,6 @@ export default function Home() {
     });
   }, []);
 
-  async function addPaper(paper: Paper) {
-    const db = await addPaperServer(paper);
-    setPapers(db.papers);
-  }
-
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -52,7 +41,6 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <Hero papers={papers} />
-        <PaperForm onSubmit={addPaper} lecturers={lecturers} />
         <PublicationsTable papers={papers} lecturers={lecturers} />
         <Statistics papers={papers} />
       </main>

@@ -8,24 +8,46 @@ import {
   FileText,
   BookOpen,
   ChevronLeft,
+  ShieldCheck,
+  Target,
+  Building2,
+  GraduationCap,
+  FileBarChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const navItems = [
+const ADMIN_NAV = [
   { label: "Tổng quan", href: "/admin", icon: LayoutDashboard, exact: true },
+  { label: "KPI", href: "/admin/kpi", icon: Target, exact: false },
+  { label: "Phát triển đội ngũ", href: "/admin/development", icon: GraduationCap, exact: false },
   { label: "Giảng viên", href: "/admin/lecturers", icon: Users, exact: false },
+  { label: "Bộ môn", href: "/admin/bo-mon", icon: Building2, exact: false },
   { label: "Bài báo", href: "/admin/papers", icon: FileText, exact: false },
   { label: "Tạp chí/Hội nghị", href: "/admin/venues", icon: BookOpen, exact: false },
+  { label: "Báo cáo", href: "/admin/reports", icon: FileBarChart, exact: false },
+  { label: "Tài khoản", href: "/admin/users", icon: ShieldCheck, exact: false },
 ];
+
+// Trưởng bộ môn: monitoring views scoped to their bộ môn (no management tools).
+const HEAD_NAV = [
+  { label: "KPI bộ môn", href: "/head", icon: Target, exact: true },
+  { label: "Phát triển đội ngũ", href: "/head/development", icon: GraduationCap, exact: false },
+  { label: "Giảng viên", href: "/head/lecturers", icon: Users, exact: false },
+];
+
+export type SidebarVariant = "admin" | "head";
 
 export function AdminSidebar({
   collapsed,
   onToggle,
+  variant = "admin",
 }: {
   collapsed: boolean;
   onToggle: () => void;
+  variant?: SidebarVariant;
 }) {
   const pathname = usePathname();
+  const navItems = variant === "head" ? HEAD_NAV : ADMIN_NAV;
 
   function isActive(href: string, exact: boolean) {
     if (exact) return pathname === href;
@@ -42,7 +64,7 @@ export function AdminSidebar({
       <div className="flex items-center gap-2.5 h-16 px-4 border-b border-border/50">
         <Link
           href="/"
-          className="flex items-center gap-2.5 text-foreground font-heading font-bold"
+          className="flex items-center gap-2.5 text-foreground font-heading font-semibold"
         >
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <BookOpen className="size-4 text-primary-foreground" />

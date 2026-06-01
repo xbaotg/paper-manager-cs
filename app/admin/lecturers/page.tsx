@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Plus,
   Search,
@@ -32,11 +33,14 @@ import { toast } from "sonner";
 import { LecturerForm } from "../_components/lecturer-form";
 import { ConfirmDialog } from "../_components/confirm-dialog";
 import { type Lecturer, type Paper } from "@/lib/data";
+import type { BoMon } from "@/lib/queries/bo_mon";
 import { getDatabase, addLecturerServer, updateLecturerServer, deleteLecturerServer } from "@/app/actions";
+import { getBoMonOptions } from "@/app/actions/bo_mon";
 
 export default function LecturersPage() {
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
   const [papers, setPapers] = useState<Paper[]>([]);
+  const [boMon, setBoMon] = useState<BoMon[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -44,17 +48,25 @@ export default function LecturersPage() {
   const [deleteTarget, setDeleteTarget] = useState<Lecturer | null>(null);
 
   useEffect(() => {
-    getDatabase().then(db => {
+    Promise.all([getDatabase(), getBoMonOptions()]).then(([db, bm]) => {
       setLecturers(db.lecturers);
       setPapers(db.papers);
+      setBoMon(bm);
       setLoaded(true);
     }).catch(err => {
       console.error(err);
       setLecturers([]);
       setPapers([]);
+      setBoMon([]);
       setLoaded(true);
     });
   }, []);
+
+  const boMonName = useMemo(() => {
+    const m = new Map<number, string>();
+    boMon.forEach((b) => m.set(b.id, b.nameVi));
+    return m;
+  }, [boMon]);
 
   // Paper counts per lecturer
   const paperCounts = useMemo(() => {
@@ -113,7 +125,7 @@ export default function LecturersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
+          <h1 className="text-2xl font-semibold font-heading flex items-center gap-2">
             <Users className="size-6 text-primary" />
             Quản lý giảng viên
           </h1>
@@ -186,7 +198,7 @@ export default function LecturersPage() {
                   >
                     <TableCell className="py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-bold text-primary shrink-0 border border-primary/15">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border border-primary/15">
                           {lecturer.name
                             .split(" ")
                             .map((n) => n[0])
@@ -195,9 +207,12 @@ export default function LecturersPage() {
                             .toUpperCase()}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">
+                          <Link
+                            href={`/admin/lecturers/${lecturer.id}`}
+                            className="font-medium text-sm hover:text-primary hover:underline"
+                          >
                             {lecturer.name}
-                          </p>
+                          </Link>
                           <Badge
                             variant="secondary"
                             className="text-[10px] mt-0.5 bg-primary/8 text-primary"
@@ -223,11 +238,13 @@ export default function LecturersPage() {
                     </TableCell>
                     <TableCell className="py-4">
                       <span className="text-sm text-muted-foreground">
-                        {lecturer.department}
+                        {lecturer.boMonId != null
+                          ? boMonName.get(lecturer.boMonId) ?? lecturer.department
+                          : lecturer.department}
                       </span>
                     </TableCell>
                     <TableCell className="py-4 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary text-sm font-bold">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary text-sm font-semibold">
                         {paperCounts[lecturer.id] || 0}
                       </span>
                     </TableCell>
@@ -273,6 +290,7 @@ export default function LecturersPage() {
         }}
         onSave={handleSave}
         editingLecturer={editing}
+        boMon={boMon}
       />
 
       {/* Delete Confirmation */}

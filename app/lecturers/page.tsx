@@ -70,7 +70,7 @@ export default function LecturersPage() {
       <main className="flex-1 container mx-auto px-6 pt-28 pb-16 max-w-6xl">
         <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold font-heading text-foreground">Đội ngũ Giảng viên</h1>
+            <h1 className="text-3xl font-semibold font-heading text-foreground">Đội ngũ Giảng viên</h1>
             <p className="text-muted-foreground mt-1 text-base">Danh sách giảng viên và thống kê công bố khoa học</p>
           </div>
           <div className="w-full md:w-80">
@@ -105,15 +105,15 @@ export default function LecturersPage() {
                 <CardContent className="flex flex-col flex-1 pb-6 px-6 pt-0">
                 <div className="bg-muted/30 rounded-xl p-4 mb-5 flex justify-between items-center border border-muted/50">
                   <div className="text-center w-full">
-                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Tổng bài báo</div>
-                    <div className="text-3xl font-black text-primary font-heading leading-none">{lecturer.totalPapers}</div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1">Tổng bài báo</div>
+                    <div className="text-3xl font-semibold text-primary font-heading leading-none">{lecturer.totalPapers}</div>
                   </div>
                   {lecturer.latestPaperYear && (
                     <>
                       <div className="h-10 w-px bg-border mx-2"></div>
                       <div className="text-center w-full">
-                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Năm gần nhất</div>
-                        <div className="text-xl font-bold text-foreground font-heading">
+                        <div className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1">Năm gần nhất</div>
+                        <div className="text-xl font-semibold text-foreground font-heading">
                           {lecturer.latestPaperYear}
                         </div>
                       </div>
@@ -135,7 +135,7 @@ export default function LecturersPage() {
                           <Badge key={year} variant="secondary" className="flex items-center gap-1.5 px-2.5 py-1 bg-background border border-border/60 shadow-sm text-xs">
                             <span className="font-medium">{year}</span>
                             <span className="opacity-40 font-normal">|</span>
-                            <span className="font-bold text-primary">{String(count)}</span>
+                            <span className="font-semibold text-primary">{String(count)}</span>
                           </Badge>
                       ))}
                     </div>

@@ -1,5 +1,12 @@
 export type LecturerTitle = "GS.TS" | "PGS.TS" | "TS" | "ThS" | "CN" | "CĐ" | "TC" | "CL" | "KS";
 
+// Normalized academic rank used by KPI logic (per-rank publication targets and
+// the PhD roadmap). Distinct from the free-form `title`: it collapses titles
+// into the 5 categories the department's targets are defined against. NCS
+// (nghiên cứu sinh / PhD candidate) cannot be inferred from `title` and is set
+// by a manager.
+export type AcademicRank = "PGS.TS" | "TS" | "NCS" | "ThS" | "CN";
+
 export interface Lecturer {
   id: number;
   name: string;
@@ -7,7 +14,75 @@ export interface Lecturer {
   title: LecturerTitle;
   department: string;
   phone?: string;
+  academicRank?: AcademicRank;
+  boMonId?: number | null;
 }
+
+export const ACADEMIC_RANK_LABELS: Record<AcademicRank, string> = {
+  "PGS.TS": "Phó Giáo sư, Tiến sĩ",
+  TS: "Tiến sĩ",
+  NCS: "Nghiên cứu sinh",
+  ThS: "Thạc sĩ",
+  CN: "Cử nhân (trợ giảng/NCV)",
+};
+
+// Build a deterministic username from a Vietnamese full name. Pattern:
+//   "Đỗ Văn Tiến"          -> "tiendv"
+//   "Lê Trần Trọng Khiêm"  -> "khiemltt"
+//   "Trần Doãn Thuyên"     -> "thuyentd"
+// Diacritics stripped, đ/Đ → d/D, lowercased. Last word is the given name; the
+// remaining words contribute their first letters as initials suffix.
+export function generateLecturerUsername(fullName: string): string {
+  const normalize = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/Đ/g, "D")
+      .replace(/đ/g, "d")
+      .toLowerCase()
+      .replace(/[^a-z]/g, "");
+  const parts = fullName.trim().split(/\s+/).map(normalize).filter(Boolean);
+  if (parts.length === 0) return "";
+  const given = parts[parts.length - 1];
+  const initials = parts.slice(0, -1).map((p) => p[0]).join("");
+  return given + initials;
+}
+
+// Best-effort initial mapping from the free-form title to a normalized rank.
+// Titles with no clean PhD/Master/Bachelor mapping fall back to ThS for target
+// purposes; NCS is never inferred (managers promote manually).
+export function academicRankFromTitle(title: string): AcademicRank {
+  switch (title) {
+    case "GS.TS":
+    case "PGS.TS":
+      return "PGS.TS";
+    case "TS":
+      return "TS";
+    case "CN":
+      return "CN";
+    default:
+      return "ThS"; // ThS, CĐ, TC, CL, KS
+  }
+}
+
+export type ScopusIndexStatus = "unknown" | "accepted" | "indexed";
+
+// Submission pipeline state — what stage the paper is at in the journal/conf.
+// Distinct from `scopusIndexStatus` which only tracks Scopus indexing.
+export type SubmissionStatus =
+  | "submitted"      // sent, waiting
+  | "under_review"   // peer review
+  | "accepted"       // accepted, not yet published
+  | "denied"         // rejected
+  | "published";     // published / appeared
+
+export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = {
+  submitted: "Đã gửi (chờ kết quả)",
+  under_review: "Đang phản biện",
+  accepted: "Chấp nhận",
+  denied: "Từ chối",
+  published: "Đã xuất bản",
+};
 
 export interface Paper {
   id: number;
@@ -19,6 +94,15 @@ export interface Paper {
   doi?: string;
   url?: string;
   abstract?: string;
+  pubMonth?: number | null;
+  // Single-credit publication tracking (the dept counts one paper for one person).
+  creditedLecturerId?: number | null;
+  isFirstAuthor?: boolean;
+  isCorrespondingAuthor?: boolean;
+  scopusIndexStatus?: ScopusIndexStatus;
+  scopusIndexYear?: number | null; // counting year for Scopus KPIs (NOT publication year)
+  quartile?: string | null;        // Q1..Q4 snapshot; null -> fall back to venue rank
+  submissionStatus?: SubmissionStatus;
 }
 
 export const LECTURER_TITLE_LABELS: Record<LecturerTitle, string> = {

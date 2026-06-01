@@ -41,9 +41,14 @@ import {
 } from "@/components/ui/select";
 import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
 import { StatsCard } from "./_components/stats-card";
-import { GrowthChart, RankingChart, VenueTypePieChart } from "./_components/analytics-charts";
+import {
+  GrowthChart, RankingChart, VenueTypePieChart,
+  SubmissionStatusPie, ScopusByYearChart, Q1RatioChart, TopVenues,
+  FacultyKpiBars, LecturerKpiBars,
+} from "./_components/analytics-charts";
+import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
 import { type Paper, type Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
-import { getPaperImpactScore, getVenueRankBucket } from "@/lib/venues";
+import { getPaperImpactScore, getVenueRankBucket, isVenueQ1 } from "@/lib/venues";
 import { getDatabase } from "@/app/actions";
 
 export default function AdminDashboard() {
@@ -67,6 +72,24 @@ export default function AdminDashboard() {
   const [filterRankBucket, setFilterRankBucket] = useState<string>("all");
   const [filterLecturerYear, setFilterLecturerYear] = useState<string>("all");
   const [filterHasPapersOnly, setFilterHasPapersOnly] = useState(false);
+
+  // KPI achievement for the year tab — loaded lazily when a single year is selected.
+  const [kpiYearData, setKpiYearData] = useState<ManagerKpiData | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+  const activeYear = useMemo(
+    () => (filterStartYear !== "all" && filterStartYear === filterEndYear ? Number(filterStartYear) : null),
+    [filterStartYear, filterEndYear]
+  );
+  useEffect(() => {
+    if (activeYear == null) { setKpiYearData(null); return; }
+    let cancelled = false;
+    setKpiLoading(true);
+    getKpiByYear(activeYear)
+      .then((d) => { if (!cancelled) setKpiYearData(d); })
+      .catch(() => { if (!cancelled) setKpiYearData(null); })
+      .finally(() => { if (!cancelled) setKpiLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeYear]);
 
   useEffect(() => {
     getDatabase().then(db => {
@@ -276,7 +299,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-heading">Analytics Dashboard</h1>
+          <h1 className="text-2xl font-semibold font-heading">Analytics Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Báo cáo hiệu suất công bố khoa học của Bộ môn
           </p>
@@ -294,6 +317,45 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Year tabs — quick single-year scope (also reflects/updates the from/to range below). */}
+      {(() => {
+        const YEAR_OPTIONS = [2026, 2027, 2028, 2029, 2030];
+        const activeYear =
+          filterStartYear !== "all" && filterStartYear === filterEndYear ? Number(filterStartYear) : null;
+        function selectYear(y: number | null) {
+          if (y == null) { setFilterStartYear("all"); setFilterEndYear("all"); }
+          else { setFilterStartYear(String(y)); setFilterEndYear(String(y)); }
+        }
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">Năm KPI:</span>
+            <div className="inline-flex rounded-md border border-border p-0.5 bg-card">
+              <button
+                type="button"
+                onClick={() => selectYear(null)}
+                className={`px-3 h-9 rounded-sm text-sm font-medium cursor-pointer transition-colors ${
+                  activeYear == null ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+                }`}
+              >
+                Tất cả
+              </button>
+              {YEAR_OPTIONS.map((y) => (
+                <button
+                  key={y}
+                  type="button"
+                  onClick={() => selectYear(y)}
+                  className={`px-3.5 h-9 rounded-sm text-sm font-medium cursor-pointer transition-colors ${
+                    activeYear === y ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+                  }`}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Global Filter Bar */}
       <div className="flex flex-wrap gap-3 items-center bg-card p-4 rounded-xl border shadow-sm">
@@ -350,35 +412,115 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI achievement — shown only when a single year tab is active. */}
+      {activeYear != null && (
+        <div className="space-y-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-heading font-semibold flex items-center gap-2 text-lg">
+              <Trophy className="size-5 text-primary" /> KPI đạt được — năm {activeYear}
+            </h2>
+            {kpiLoading && <span className="text-xs text-muted-foreground">Đang tải…</span>}
+            {!kpiLoading && kpiYearData && !kpiYearData.selectedPeriodId && (
+              <span className="text-xs text-amber-600">Chưa có kỳ KPI cho năm này.</span>
+            )}
+          </div>
+          {kpiYearData && kpiYearData.selectedPeriodId && (
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <BarChart3 className="size-4 text-primary" /> Cấp Khoa — thực đạt vs mục tiêu
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FacultyKpiBars rollup={kpiYearData.rollup} indicators={kpiYearData.indicators} />
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <Trophy className="size-4 text-emerald-500" /> Top giảng viên — Bài Scopus
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <LecturerKpiBars rows={kpiYearData.rows} lecturers={kpiYearData.lecturers} indicators={kpiYearData.indicators} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Submission pipeline + Scopus / Q1 / journal stats */}
+      {(() => {
+        const scopusCount = filteredPapers.filter((p) => p.scopusIndexStatus === "indexed").length;
+        const q1Count = filteredPapers.filter((p) => {
+          if (p.scopusIndexStatus !== "indexed") return false;
+          return p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
+        }).length;
+        const pending = filteredPapers.filter((p) => p.submissionStatus === "submitted" || p.submissionStatus === "under_review").length;
+        const accepted = filteredPapers.filter((p) => p.submissionStatus === "accepted" || p.submissionStatus === "published").length;
+        const denied = filteredPapers.filter((p) => p.submissionStatus === "denied").length;
+        const decisions = accepted + denied;
+        const acceptRate = decisions > 0 ? Math.round((accepted / decisions) * 100) : null;
+        return (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`${filteredPapers.length} bài tổng`} accentClass="text-blue-500 bg-blue-500/10" />
+              <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Theo dữ liệu paper" accentClass="text-emerald-500 bg-emerald-500/10" />
+              <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Submitted + Đang phản biện" accentClass="text-amber-500 bg-amber-500/10" />
+              <StatsCard icon={Users} label="Tỷ lệ chấp nhận" value={acceptRate == null ? "—" : `${acceptRate}%`} subtext={`${accepted} chấp nhận / ${denied} từ chối`} accentClass="text-indigo-500 bg-indigo-500/10" />
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <PieChartIcon className="size-4 text-amber-500" /> Trạng thái nộp bài
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><SubmissionStatusPie papers={filteredPapers} /></CardContent>
+              </Card>
+              <Card className="lg:col-span-2 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <BarChart3 className="size-4 text-blue-500" /> Bài Scopus / Q1 theo năm
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><ScopusByYearChart papers={filteredPapers} /></CardContent>
+              </Card>
+            </div>
+
+            <div className="grid lg:grid-cols-3 gap-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <TrendingUp className="size-4 text-emerald-500" /> Tỷ lệ Q1 theo năm
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><Q1RatioChart papers={filteredPapers} /></CardContent>
+              </Card>
+              <Card className="lg:col-span-2 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                    <Trophy className="size-4 text-indigo-500" /> Top tạp chí / hội nghị
+                  </CardTitle>
+                </CardHeader>
+                <CardContent><TopVenues papers={filteredPapers} /></CardContent>
+              </Card>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Stats Grid (volume only — KPI-related stats sit in the section above) */}
+      <div className="grid grid-cols-1 gap-4">
         <StatsCard
           icon={FileText}
           label="Tổng công bố"
           value={filteredPapers.length}
           subtext="Trong phạm vi trích lọc"
           accentClass="text-blue-500 bg-blue-500/10"
-        />
-        <StatsCard
-          icon={TrendingUp}
-          label="Điểm Impact Tích luỹ"
-          value={totalImpactScore}
-          subtext="Điểm chất lượng hội nghị"
-          accentClass="text-indigo-500 bg-indigo-500/10"
-        />
-        <StatsCard
-          icon={Trophy}
-          label="Top báo cáo tại"
-          value={topVenue}
-          subtext={`${venueCounts[topVenue] || 0} bài`}
-          accentClass="text-amber-500 bg-amber-500/10"
-        />
-        <StatsCard
-          icon={Users}
-          label="Tác giả"
-          value={filterLecturerId === null ? Object.keys(lecturerStats).length : 1}
-          subtext="Giảng viên có đóng góp"
-          accentClass="text-emerald-500 bg-emerald-500/10"
         />
       </div>
 
@@ -425,33 +567,6 @@ export default function AdminDashboard() {
 
         {filterLecturerId === null && (
           <>
-            <Card className="shadow-sm border-indigo-500/20">
-              <CardHeader className="pb-4 border-b">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2 uppercase">
-                  <Trophy className="size-4 text-indigo-500" />
-                  Top Điểm Impact (Chất Lượng)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="flex flex-col divide-y divide-border/50">
-                  {topLecturersByImpact.map((lecturer, idx) => (
-                    <div key={lecturer.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${idx === 0 ? "bg-amber-100 text-amber-700" : idx === 1 ? "bg-slate-100 text-slate-700" : idx === 2 ? "bg-orange-100 text-orange-800" : "bg-muted text-muted-foreground"}`}>
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{lecturer.title}. {lecturer.name}</p>
-                      </div>
-                      <Badge className="bg-indigo-500 shrink-0">{lecturer.stat}đ</Badge>
-                    </div>
-                  ))}
-                  {topLecturersByImpact.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-6">Không có dữ liệu</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
             <Card className="shadow-sm">
               <CardHeader className="pb-4 border-b bg-muted/20">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2 uppercase">
@@ -463,7 +578,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-col divide-y divide-border/50">
                   {topLecturersByVolume.map((lecturer, idx) => (
                     <div key={lecturer.id} className="flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-muted text-muted-foreground">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 bg-muted text-muted-foreground">
                         {idx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -494,7 +609,7 @@ export default function AdminDashboard() {
                {recentPapers.map((paper) => (
                  <div key={paper.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                    <div className="flex-1 min-w-0">
-                     <p className="text-sm font-medium leading-snug line-clamp-2">{paper.title}</p>
+                     <Link href={`/papers/${paper.id}`} className="text-sm font-medium leading-snug line-clamp-2 hover:text-primary hover:underline">{paper.title}</Link>
                      <div className="flex items-center gap-2 mt-1.5">
                        <Badge variant="outline" className="bg-primary/5 text-primary text-xs">
                          {paper.venue}
@@ -633,27 +748,27 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-border border-b bg-muted/20">
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tổng GV</div>
-            <div className="text-lg font-bold font-heading text-foreground">{lecturerSummary.total}</div>
+            <div className="text-lg font-semibold font-heading text-foreground">{lecturerSummary.total}</div>
           </div>
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Có bài báo</div>
-            <div className="text-lg font-bold font-heading text-primary">{lecturerSummary.withPapers}</div>
+            <div className="text-lg font-semibold font-heading text-primary">{lecturerSummary.withPapers}</div>
           </div>
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tổng bài</div>
-            <div className="text-lg font-bold font-heading text-blue-500">{lecturerSummary.totalPapersSum}</div>
+            <div className="text-lg font-semibold font-heading text-blue-500">{lecturerSummary.totalPapersSum}</div>
           </div>
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">TB bài/GV</div>
-            <div className="text-lg font-bold font-heading text-emerald-500">{lecturerSummary.avgPapers}</div>
+            <div className="text-lg font-semibold font-heading text-emerald-500">{lecturerSummary.avgPapers}</div>
           </div>
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tổng Impact</div>
-            <div className="text-lg font-bold font-heading text-indigo-500">{lecturerSummary.totalImpactSum}</div>
+            <div className="text-lg font-semibold font-heading text-indigo-500">{lecturerSummary.totalImpactSum}</div>
           </div>
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">TB Impact/GV</div>
-            <div className="text-lg font-bold font-heading text-amber-500">{lecturerSummary.avgImpact}</div>
+            <div className="text-lg font-semibold font-heading text-amber-500">{lecturerSummary.avgImpact}</div>
           </div>
         </div>
         <CardContent className="p-0">
@@ -673,18 +788,12 @@ export default function AdminDashboard() {
                       Bài báo <SortIcon column="totalPapers" />
                     </button>
                   </TableHead>
-                  <TableHead>
-                    <button onClick={() => toggleLecturerSort("impactScore")} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer font-semibold">
-                      Điểm Impact <SortIcon column="impactScore" />
-                    </button>
-                  </TableHead>
                   <TableHead className="hidden lg:table-cell">Phân bố Rank</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     <button onClick={() => toggleLecturerSort("latestYear")} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer font-semibold">
                       Năm gần nhất <SortIcon column="latestYear" />
                     </button>
                   </TableHead>
-                  <TableHead className="hidden xl:table-cell">Phân bố năm</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -716,13 +825,8 @@ export default function AdminDashboard() {
                         <Badge variant="outline" className="text-xs whitespace-nowrap">{lecturer.title}</Badge>
                       </TableCell>
                       <TableCell>
-                        <span className={`text-lg font-bold font-heading ${lecturer.totalPapers > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                        <span className={`text-lg font-semibold font-heading ${lecturer.totalPapers > 0 ? "text-primary" : "text-muted-foreground"}`}>
                           {lecturer.totalPapers}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`text-lg font-bold font-heading ${lecturer.impactScore > 0 ? "text-indigo-500" : "text-muted-foreground"}`}>
-                          {lecturer.impactScore}
                         </span>
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
@@ -757,26 +861,11 @@ export default function AdminDashboard() {
                           <span className="text-xs text-muted-foreground italic">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        {lecturer.totalPapers === 0 ? (
-                          <span className="text-xs text-muted-foreground italic">—</span>
-                        ) : (
-                          <div className="flex gap-1 flex-wrap">
-                            {Object.entries(lecturer.papersByYear)
-                              .sort(([a], [b]) => Number(b) - Number(a))
-                              .map(([year, count]) => (
-                                <Badge key={year} variant="secondary" className="text-[10px] px-1.5 py-0">
-                                  {year}:{count}
-                                </Badge>
-                              ))}
-                          </div>
-                        )}
-                      </TableCell>
                     </TableRow>
                 ))}
                 {filteredLecturerAnalytics.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                       Không tìm thấy giảng viên nào phù hợp.
                     </TableCell>
                   </TableRow>

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useMemo } from "react";
 import {
   Search,
@@ -129,7 +131,7 @@ export function PublicationsTable({
           <span className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-primary/8 text-xs font-semibold text-primary uppercase tracking-wider">
             Công bố khoa học
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold font-heading mb-4">
+          <h2 className="text-3xl sm:text-4xl font-semibold font-heading mb-4">
             Danh sách bài báo
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
@@ -245,9 +247,12 @@ export function PublicationsTable({
                       className="hover:bg-muted/40 transition-colors group"
                     >
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
-                        <p className="font-medium text-foreground text-sm xl:text-base leading-snug break-words group-hover:text-primary transition-colors">
+                        <Link
+                          href={`/papers/${paper.id}`}
+                          className="font-medium text-foreground text-sm xl:text-base leading-snug break-words hover:text-primary hover:underline transition-colors"
+                        >
                           {paper.title}
-                        </p>
+                        </Link>
                       </TableCell>
                       <TableCell className="px-4 py-4 align-middle text-center whitespace-normal">
                         <span className="inline-block px-2.5 py-1 rounded-md bg-secondary/80 font-semibold font-heading text-primary text-sm shadow-sm">

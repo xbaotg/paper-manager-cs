@@ -12,10 +12,18 @@ import {
 } from "@/components/ui/dialog";
 import { Save, RotateCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AuthorshipInput, type AuthorEntry } from "@/app/_components/authorship-input";
 import { VenuePicker } from "./venue-picker";
 import { BibtexImportDialog } from "@/app/_components/bibtex-import-dialog";
-import type { Paper, Lecturer } from "@/lib/data";
+import type { Paper, Lecturer, ScopusIndexStatus, SubmissionStatus } from "@/lib/data";
+import { SUBMISSION_STATUS_LABEL } from "@/lib/data";
 
 interface PaperFormAdminProps {
   open: boolean;
@@ -33,6 +41,10 @@ const emptyForm = {
   doi: "",
   url: "",
   abstract: "",
+  scopusIndexStatus: "unknown" as ScopusIndexStatus,
+  scopusIndexYear: "",
+  quartile: "",
+  submissionStatus: "submitted" as SubmissionStatus,
 };
 
 export function PaperFormAdmin({
@@ -44,6 +56,9 @@ export function PaperFormAdmin({
 }: PaperFormAdminProps) {
   const [form, setForm] = useState(emptyForm);
   const [authors, setAuthors] = useState<AuthorEntry[]>([]);
+  const [creditedId, setCreditedId] = useState<string>("");
+  const [firstAuthor, setFirstAuthor] = useState(false);
+  const [corresponding, setCorresponding] = useState(false);
   const [isBibtexOpen, setIsBibtexOpen] = useState(false);
 
   useEffect(() => {
@@ -56,7 +71,14 @@ export function PaperFormAdmin({
         doi: editingPaper.doi || "",
         url: editingPaper.url || "",
         abstract: editingPaper.abstract || "",
+        scopusIndexStatus: editingPaper.scopusIndexStatus ?? "unknown",
+        scopusIndexYear: editingPaper.scopusIndexYear != null ? String(editingPaper.scopusIndexYear) : "",
+        quartile: editingPaper.quartile ?? "",
+        submissionStatus: editingPaper.submissionStatus ?? "submitted",
       });
+      setCreditedId(editingPaper.creditedLecturerId != null ? String(editingPaper.creditedLecturerId) : "");
+      setFirstAuthor(!!editingPaper.isFirstAuthor);
+      setCorresponding(!!editingPaper.isCorrespondingAuthor);
 
       const allNames = editingPaper.authors ? editingPaper.authors.split(",").map(x => x.trim()).filter(Boolean) : [];
       const tempAuthors: AuthorEntry[] = [];
@@ -83,8 +105,16 @@ export function PaperFormAdmin({
     } else {
       setForm(emptyForm);
       setAuthors([]);
+      setCreditedId("");
+      setFirstAuthor(false);
+      setCorresponding(false);
     }
   }, [editingPaper, open, lecturers]);
+
+  // Internal (faculty) authors are the only candidates for the single credit.
+  const internalAuthors = authors.filter(
+    (a): a is Extract<AuthorEntry, { type: "internal" }> => a.type === "internal"
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,9 +134,10 @@ export function PaperFormAdmin({
     }
 
     const allAuthors = authors.map((a) => a.name).join(", ");
-    const lecturerIds = authors
-      .filter((a) => a.type === "internal")
-      .map((a: any) => a.id);
+    const lecturerIds = internalAuthors.map((a) => a.id);
+
+    // Only a linked internal author may hold the credit (enforced server-side too).
+    const credited = creditedId && lecturerIds.includes(Number(creditedId)) ? Number(creditedId) : null;
 
     const paper: Paper = {
       id: editingPaper?.id ?? Date.now(),
@@ -118,12 +149,22 @@ export function PaperFormAdmin({
       doi: form.doi.trim() || undefined,
       url: form.url.trim() || undefined,
       abstract: form.abstract.trim() || undefined,
+      creditedLecturerId: credited,
+      isFirstAuthor: firstAuthor,
+      isCorrespondingAuthor: corresponding,
+      scopusIndexStatus: form.scopusIndexStatus,
+      scopusIndexYear: form.scopusIndexYear ? parseInt(form.scopusIndexYear, 10) : null,
+      quartile: form.quartile || null,
+      submissionStatus: form.submissionStatus,
     };
 
     onSave(paper);
     onOpenChange(false);
     setForm(emptyForm);
     setAuthors([]);
+    setCreditedId("");
+    setFirstAuthor(false);
+    setCorresponding(false);
   }
 
   function handleBibtexConfirm(data: {
@@ -217,6 +258,110 @@ export function PaperFormAdmin({
               value={authors}
               onChange={setAuthors}
             />
+          </div>
+
+          {/* KPI publication tracking (single-credit rule + Scopus/Q1) */}
+          <div className="space-y-4 rounded-xl border border-dashed bg-muted/20 p-4">
+            <p className="text-sm font-semibold font-heading">Ghi nhận KPI công bố</p>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tình trạng nộp bài</label>
+              <Select
+                value={form.submissionStatus}
+                onValueChange={(v) => setForm({ ...form, submissionStatus: (v as SubmissionStatus) ?? "submitted" })}
+              >
+                <SelectTrigger className="h-11 cursor-pointer"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(SUBMISSION_STATUS_LABEL) as SubmissionStatus[]).map((s) => (
+                    <SelectItem key={s} value={s} className="cursor-pointer">{SUBMISSION_STATUS_LABEL[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Cá nhân được tính kết quả (chỉ 1 người thuộc Khoa)
+              </label>
+              <Select
+                value={creditedId || "none"}
+                onValueChange={(v) => setCreditedId(v && v !== "none" ? v : "")}
+              >
+                <SelectTrigger className="h-11 cursor-pointer">
+                  <SelectValue placeholder="Chọn tác giả nội bộ..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="cursor-pointer">— Chưa xác định —</SelectItem>
+                  {internalAuthors.map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)} className="cursor-pointer">
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Một bài chỉ được tính cho một cá nhân. Nếu có đồng tác giả ngoài Trường, chỉ tính khi là tác giả chính/liên hệ.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-5">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={firstAuthor} onChange={(e) => setFirstAuthor(e.target.checked)} className="size-4 cursor-pointer" />
+                Tác giả chính (đứng đầu)
+              </label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={corresponding} onChange={(e) => setCorresponding(e.target.checked)} className="size-4 cursor-pointer" />
+                Tác giả liên hệ
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Tình trạng Scopus</label>
+                <Select
+                  value={form.scopusIndexStatus}
+                  onValueChange={(v) => setForm({ ...form, scopusIndexStatus: (v as ScopusIndexStatus) ?? "unknown" })}
+                >
+                  <SelectTrigger className="h-11 cursor-pointer"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unknown" className="cursor-pointer">Chưa rõ</SelectItem>
+                    <SelectItem value="accepted" className="cursor-pointer">Đã chấp nhận (chưa index)</SelectItem>
+                    <SelectItem value="indexed" className="cursor-pointer">Đã index Scopus</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Năm index</label>
+                <Input
+                  type="number"
+                  min={2000}
+                  max={2035}
+                  placeholder="VD: 2026"
+                  value={form.scopusIndexYear}
+                  onChange={(e) => setForm({ ...form, scopusIndexYear: e.target.value })}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Xếp hạng (Q)</label>
+                <Select
+                  value={form.quartile || "auto"}
+                  onValueChange={(v) => setForm({ ...form, quartile: v === "auto" ? "" : (v ?? "") })}
+                >
+                  <SelectTrigger className="h-11 cursor-pointer"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto" className="cursor-pointer">Theo venue (tự động)</SelectItem>
+                    <SelectItem value="Q1" className="cursor-pointer">Q1</SelectItem>
+                    <SelectItem value="Q2" className="cursor-pointer">Q2</SelectItem>
+                    <SelectItem value="Q3" className="cursor-pointer">Q3</SelectItem>
+                    <SelectItem value="Q4" className="cursor-pointer">Q4</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Bài chỉ được tính vào KPI Scopus/Q1 ở <strong>năm index</strong> (không phải năm chấp nhận).
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

@@ -53,12 +53,10 @@ function Counter({
   return (
     <div
       ref={ref}
-      className="bg-card/60 backdrop-blur-md border border-border/50 rounded-2xl p-6 text-center hover:-translate-y-0.5 transition-transform cursor-default"
+      className="bg-card border border-border rounded-md p-6 text-center hover:-translate-y-0.5 transition-transform cursor-default"
     >
-      <div className="text-3xl font-bold text-primary font-heading">{count}</div>
-      <div className="text-xs text-muted-foreground font-medium mt-1">
-        {label}
-      </div>
+      <div className="text-3xl font-semibold text-foreground font-heading tracking-tight">{count}</div>
+      <div className="eyebrow-sm text-muted-foreground mt-2">{label}</div>
     </div>
   );
 }
@@ -78,54 +76,32 @@ export function Hero({ papers }: { papers: Paper[] }) {
   return (
     <section
       id="hero"
-      className="relative min-h-screen flex items-center pt-28 pb-16 overflow-hidden"
+      className="relative min-h-screen flex items-center pt-28 pb-16 bg-background border-b border-border"
     >
-      {/* Animated gradient background */}
-      <div
-        className="absolute inset-0 -z-10 animate-gradient"
-        style={{
-          background:
-            "linear-gradient(135deg, oklch(0.985 0.005 293), oklch(0.94 0.04 293), oklch(0.9 0.06 293), oklch(0.96 0.02 293))",
-        }}
-      />
-      <div className="absolute -top-1/3 -right-1/4 w-[500px] h-[500px] rounded-full bg-primary/8 blur-3xl -z-10" />
-      <div className="absolute -bottom-1/4 -left-1/6 w-[400px] h-[400px] rounded-full bg-cta/6 blur-3xl -z-10" />
-
       <div className="container mx-auto px-6 max-w-5xl text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-primary/8 border border-primary/15 text-sm font-medium text-primary">
-          <Star className="size-4" />
+        <div className="eyebrow inline-flex items-center gap-2 mb-7 text-foreground">
+          <Star className="size-4 text-accent-purple" />
           Khoa Khoa học máy tính
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold font-heading leading-tight mb-6">
-          Quản lý{" "}
-          <span className="bg-gradient-to-r from-primary to-cta bg-clip-text text-transparent">
-            Công bố Khoa học
-          </span>{" "}
-          dễ dàng
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-semibold font-heading leading-[1.04] tracking-tight mb-6 text-foreground">
+          Quản lý Công bố Khoa học &amp; KPI
         </h1>
 
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-          Nền tảng giúp các thành viên trong Khoa nhập thông tin bài báo, thống
-          kê và tổng hợp danh sách công bố khoa học một cách nhanh chóng.
+        <p className="text-lg sm:text-xl text-body max-w-2xl mx-auto mb-10 leading-relaxed text-muted-foreground">
+          Nền tảng theo dõi công bố khoa học, chỉ tiêu KPI và phát triển đội ngũ
+          của Khoa Khoa học Máy tính — nhập liệu, tổng hợp và báo cáo nhanh chóng.
         </p>
 
-        <div className="flex flex-wrap gap-4 justify-center mb-16">
+        <div className="flex flex-wrap gap-3 justify-center mb-16">
           <Link href="#submit">
-            <Button
-              size="lg"
-              className="cursor-pointer bg-cta text-cta-foreground hover:bg-cta/90 shadow-lg shadow-cta/25 text-sm font-semibold px-6"
-            >
+            <Button size="lg" className="cursor-pointer px-6">
               <Plus className="size-4" data-icon="inline-start" />
               Nhập bài báo ngay
             </Button>
           </Link>
           <Link href="#publications">
-            <Button
-              variant="outline"
-              size="lg"
-              className="cursor-pointer text-sm font-semibold px-6"
-            >
+            <Button variant="outline" size="lg" className="cursor-pointer px-6">
               <ClipboardList className="size-4" data-icon="inline-start" />
               Xem danh sách
             </Button>

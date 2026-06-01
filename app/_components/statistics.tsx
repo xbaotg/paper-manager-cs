@@ -30,10 +30,8 @@ export function Statistics({ papers }: { papers: Paper[] }) {
     <section id="statistics" className="py-24 bg-card">
       <div className="container mx-auto px-6 max-w-5xl">
         <div className="text-center mb-12">
-          <span className="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-primary/8 text-xs font-semibold text-primary uppercase tracking-wider">
-            Thống kê
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-bold font-heading mb-4">
+          <span className="eyebrow block mb-4">Thống kê</span>
+          <h2 className="text-3xl sm:text-4xl font-semibold font-heading mb-4">
             Tổng quan nghiên cứu
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">

@@ -20,20 +20,27 @@ import { Save, RotateCcw } from "lucide-react";
 import {
   type Lecturer,
   type LecturerTitle,
+  type AcademicRank,
   LECTURER_TITLE_LABELS,
+  ACADEMIC_RANK_LABELS,
+  academicRankFromTitle,
 } from "@/lib/data";
+import type { BoMon } from "@/lib/queries/bo_mon";
 
 interface LecturerFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (lecturer: Lecturer) => void;
   editingLecturer?: Lecturer | null;
+  boMon: BoMon[];
 }
 
 const emptyForm = {
   name: "",
   email: "",
   title: "ThS" as LecturerTitle,
+  academicRank: "ThS" as AcademicRank,
+  boMonId: "" as string,
   department: "Khoa Khoa học máy tính",
   phone: "",
 };
@@ -43,6 +50,7 @@ export function LecturerForm({
   onOpenChange,
   onSave,
   editingLecturer,
+  boMon,
 }: LecturerFormProps) {
   const [form, setForm] = useState(emptyForm);
 
@@ -52,6 +60,8 @@ export function LecturerForm({
         name: editingLecturer.name,
         email: editingLecturer.email,
         title: editingLecturer.title,
+        academicRank: editingLecturer.academicRank ?? academicRankFromTitle(editingLecturer.title),
+        boMonId: editingLecturer.boMonId != null ? String(editingLecturer.boMonId) : "",
         department: editingLecturer.department,
         phone: editingLecturer.phone || "",
       });
@@ -59,6 +69,16 @@ export function LecturerForm({
       setForm(emptyForm);
     }
   }, [editingLecturer, open]);
+
+  // When the title changes, keep the normalized rank in sync unless it was
+  // manually set to NCS (which no title implies).
+  function handleTitleChange(val: LecturerTitle) {
+    setForm((f) => ({
+      ...f,
+      title: val,
+      academicRank: f.academicRank === "NCS" ? "NCS" : academicRankFromTitle(val),
+    }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +91,8 @@ export function LecturerForm({
       title: form.title,
       department: form.department.trim(),
       phone: form.phone.trim() || undefined,
+      academicRank: form.academicRank,
+      boMonId: form.boMonId ? Number(form.boMonId) : null,
     };
 
     onSave(lecturer);
@@ -122,9 +144,7 @@ export function LecturerForm({
               </label>
               <Select
                 value={form.title}
-                onValueChange={(val) =>
-                  setForm({ ...form, title: val as LecturerTitle })
-                }
+                onValueChange={(val) => handleTitleChange(val as LecturerTitle)}
               >
                 <SelectTrigger className="h-11 cursor-pointer">
                   <SelectValue />
@@ -150,6 +170,58 @@ export function LecturerForm({
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 className="h-11"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold font-heading">
+                Hạng KPI (học hàm/học vị)
+              </label>
+              <Select
+                value={form.academicRank}
+                onValueChange={(val) =>
+                  setForm({ ...form, academicRank: val as AcademicRank })
+                }
+              >
+                <SelectTrigger className="h-11 cursor-pointer">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ACADEMIC_RANK_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k} className="cursor-pointer">
+                      {k} — {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Dùng để áp chỉ tiêu công bố theo hạng. Chọn NCS cho nghiên cứu sinh.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold font-heading">Bộ môn</label>
+              <Select
+                value={form.boMonId || "none"}
+                onValueChange={(val) =>
+                  setForm({ ...form, boMonId: val && val !== "none" ? val : "" })
+                }
+              >
+                <SelectTrigger className="h-11 cursor-pointer">
+                  <SelectValue placeholder="Chọn bộ môn..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="cursor-pointer">
+                    — Chưa phân bộ môn —
+                  </SelectItem>
+                  {boMon.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)} className="cursor-pointer">
+                      {b.code} — {b.nameVi}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
