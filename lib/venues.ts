@@ -5628,98 +5628,108 @@ export const VENUES: Venue[] = [
 ];
 
 export function getVenueByCode(code: string): Venue | null {
-  if (typeof window !== "undefined" && !(window as any).__venuesHydrated) {
-    hydrateVenues();
-  }
   return VENUES.find((v) => v.code === code) || null;
 }
 
-export function hydrateVenues() {
+// Hydrate VENUES from the DB. Custom venues persisted server-side get appended
+// to the build-time seed list so all downstream lookups (rank/scopus/type) keep
+// working in client components. Idempotent: a second call reconciles diffs in
+// place rather than duplicating rows.
+//
+// One-time migration: any legacy localStorage entries from the pre-DB flow are
+// pushed to the server before being cleared, so users don't lose work they did
+// before the switch.
+export async function hydrateVenues(): Promise<void> {
   if (typeof window === "undefined") return;
+  const { listVenuesServer, addCustomVenueServer } = await import("@/app/actions");
+
+  await migrateLegacyLocalVenues(addCustomVenueServer);
+
   try {
-    // 1. Load Custom Venues
-    const raw = localStorage.getItem("paperManagerCS_customVenues");
-    if (raw) {
-      const custom: Venue[] = JSON.parse(raw);
-      custom.forEach(cv => {
-        if (!VENUES.find(v => v.code === cv.code)) {
-          VENUES.push(cv);
-        }
-      });
-    }
-
-    // 2. Load Deleted Venues
-    const deletedRaw = localStorage.getItem("paperManagerCS_deletedVenues");
-    if (deletedRaw) {
-      const deletedRules: string[] = JSON.parse(deletedRaw);
-      for (let i = VENUES.length - 1; i >= 0; i--) {
-        if (deletedRules.includes(VENUES[i].code)) {
-          VENUES.splice(i, 1);
-        }
-      }
-    }
-
-    // 3. Load Edited Venues
-    const editedRaw = localStorage.getItem("paperManagerCS_editedVenues");
-    if (editedRaw) {
-      const editedRules: Record<string, Venue> = JSON.parse(editedRaw);
-      VENUES.forEach(v => {
-        if (editedRules[v.code]) {
-          Object.assign(v, editedRules[v.code]);
-        }
-      });
-    }
-
+    const serverList = await listVenuesServer();
+    syncVenuesArray(serverList);
     (window as any).__venuesHydrated = true;
-  } catch (e) {}
+  } catch {}
 }
 
-export function saveCustomVenue(v: Venue) {
+export async function saveCustomVenue(v: Venue): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    if (!VENUES.find(existing => existing.code === v.code)) {
-      VENUES.push(v);
+    const { addCustomVenueServer } = await import("@/app/actions");
+    const list = await addCustomVenueServer({
+      code: v.code,
+      nameEn: v.nameEn,
+      nameVi: v.nameVi,
+      type: v.type,
+      rank: v.rank,
+      scopusIndexed: v.scopusIndexed,
+    });
+    syncVenuesArray(list);
+  } catch {}
+}
+
+export async function deleteVenue(code: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const { deleteVenueServer } = await import("@/app/actions");
+    const list = await deleteVenueServer(code);
+    syncVenuesArray(list);
+  } catch {}
+}
+
+export async function editVenue(code: string, overrides: Partial<Venue>): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const { updateVenueServer } = await import("@/app/actions");
+    const list = await updateVenueServer(code, overrides);
+    syncVenuesArray(list);
+  } catch {}
+}
+
+// Replace VENUES contents in place so existing module-level consumers
+// (anywhere holding a reference to the imported array) keep seeing the latest
+// rows. We mutate length + splice rather than re-export to preserve the array
+// identity that callers may already have cached.
+function syncVenuesArray(next: Venue[]): void {
+  const byCode = new Map<string, Venue>(next.map((v) => [v.code, v]));
+  // Update existing entries; drop any that no longer exist server-side.
+  for (let i = VENUES.length - 1; i >= 0; i--) {
+    const fresh = byCode.get(VENUES[i].code);
+    if (!fresh) {
+      VENUES.splice(i, 1);
+      continue;
     }
+    Object.assign(VENUES[i], fresh);
+    byCode.delete(VENUES[i].code);
+  }
+  // Append anything new from the server we don't yet have locally.
+  for (const v of byCode.values()) VENUES.push(v);
+}
+
+// Best-effort migration of the original localStorage venue store into the DB.
+// Runs once per browser; failures are swallowed so they don't block hydration.
+async function migrateLegacyLocalVenues(
+  add: (v: Omit<Venue, "id">) => Promise<Venue[]>
+): Promise<void> {
+  try {
     const raw = localStorage.getItem("paperManagerCS_customVenues");
-    const custom: Venue[] = raw ? JSON.parse(raw) : [];
-    if (!custom.find(existing => existing.code === v.code)) {
-      custom.push(v);
-      localStorage.setItem("paperManagerCS_customVenues", JSON.stringify(custom));
+    if (!raw) return;
+    const custom: Venue[] = JSON.parse(raw);
+    for (const v of custom) {
+      await add({
+        code: v.code,
+        nameEn: v.nameEn,
+        nameVi: v.nameVi,
+        type: v.type,
+        rank: v.rank,
+        scopusIndexed: v.scopusIndexed,
+      });
     }
-  } catch (e) {}
-}
-
-export function deleteVenue(code: string) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem("paperManagerCS_deletedVenues");
-    const deletedRules: string[] = raw ? JSON.parse(raw) : [];
-    if (!deletedRules.includes(code)) {
-      deletedRules.push(code);
-      localStorage.setItem("paperManagerCS_deletedVenues", JSON.stringify(deletedRules));
-    }
-    // mutably remove it from in-memory array
-    const idx = VENUES.findIndex(v => v.code === code);
-    if (idx !== -1) VENUES.splice(idx, 1);
-  } catch (e) {}
-}
-
-export function editVenue(code: string, overrides: Partial<Venue>) {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = localStorage.getItem("paperManagerCS_editedVenues");
-    const editedRules: Record<string, Partial<Venue>> = raw ? JSON.parse(raw) : {};
-    
-    // Store override rules
-    editedRules[code] = { ...(editedRules[code] || {}), ...overrides };
-    localStorage.setItem("paperManagerCS_editedVenues", JSON.stringify(editedRules));
-    
-    // mutably adjust in-memory array
-    const v = VENUES.find(v => v.code === code);
-    if (v) {
-      Object.assign(v, overrides);
-    }
-  } catch (e) {}
+    localStorage.removeItem("paperManagerCS_customVenues");
+    // Drop the now-orphan rules from the previous flow.
+    localStorage.removeItem("paperManagerCS_deletedVenues");
+    localStorage.removeItem("paperManagerCS_editedVenues");
+  } catch {}
 }
 
 export type RankBucket = "Hạng Cao (A*, A, Q1)" | "Hạng Vừa (B, Q2)" | "Đang lên (C, Q3, Q4)" | "Chưa phân loại";
@@ -5734,14 +5744,6 @@ export function getVenueRankBucket(venueCode: string): RankBucket {
   if (r.includes("C") || r.includes("Q3") || r.includes("Q4")) return "Đang lên (C, Q3, Q4)";
   
   return "Chưa phân loại";
-}
-
-export function getPaperImpactScore(venueCode: string): number {
-  const bucket = getVenueRankBucket(venueCode);
-  if (bucket === "Hạng Cao (A*, A, Q1)") return 3;
-  if (bucket === "Hạng Vừa (B, Q2)") return 2;
-  if (bucket === "Đang lên (C, Q3, Q4)") return 1;
-  return 0.5; // Chưa phân loại gets a tiny score just for volume
 }
 
 // Q1 specifically (the dept's 30% / 17-paper target keys on Q1, not the broad

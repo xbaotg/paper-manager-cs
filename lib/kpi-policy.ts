@@ -29,7 +29,6 @@ export const INDICATOR_CODE = {
   q1: "q1_count",
   phd: "phd_count",
   paperCount: "paper_count",
-  paperPoints: "paper_points",
 } as const;
 
 // Suggested faculty target for an indicator code, used to pre-fill the panel.

@@ -1,5 +1,5 @@
 // KPI calculation. Pure functions reusing the venue scoring helpers.
-import { getPaperImpactScore, isVenueQ1 } from "./venues";
+import { isVenueQ1 } from "./venues";
 import type { Paper, AcademicRank } from "./data";
 
 export interface KpiPeriod {
@@ -12,10 +12,10 @@ export interface KpiPeriod {
 
 export interface KpiIndicator {
   id: number;
-  code: string;       // 'paper_count' | 'paper_points' | 'scopus_paper_count' | 'q1_count' | 'phd_count'
+  code: string;       // 'paper_count' | 'scopus_paper_count' | 'q1_count' | 'phd_count'
   nameVi: string;
-  unit: string;       // 'bài' | 'điểm' | 'người'
-  agg: string;        // 'count' | 'weighted_points' | 'scopus_count' | 'q1_count' | 'phd_count'
+  unit: string;       // 'bài' | 'người'
+  agg: string;        // 'count' | 'scopus_count' | 'q1_count' | 'phd_count'
 }
 
 export interface KpiTarget {
@@ -90,9 +90,6 @@ export function computeActual(
 
   // Legacy indicators attribute by publication year.
   const own = papers.filter((p) => isCreditedTo(p, lecturerId) && paperInPeriod(p, period));
-  if (indicator.agg === "weighted_points") {
-    return Number(own.reduce((s, p) => s + getPaperImpactScore(p.venue), 0).toFixed(2));
-  }
   return own.length;
 }
 

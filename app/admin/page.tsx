@@ -48,7 +48,7 @@ import {
 } from "./_components/analytics-charts";
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
 import { type Paper, type Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
-import { getPaperImpactScore, getVenueRankBucket, isVenueQ1 } from "@/lib/venues";
+import { getVenueRankBucket, isVenueQ1 } from "@/lib/venues";
 import { getDatabase } from "@/app/actions";
 
 export default function AdminDashboard() {
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
 
   // Lecturer Analytics state
   const [lecturerSearch, setLecturerSearch] = useState("");
-  const [lecturerSortKey, setLecturerSortKey] = useState<"name" | "totalPapers" | "impactScore" | "latestYear">("totalPapers");
+  const [lecturerSortKey, setLecturerSortKey] = useState<"name" | "totalPapers" | "latestYear">("totalPapers");
   const [lecturerSortDir, setLecturerSortDir] = useState<"asc" | "desc">("desc");
   
   const [filterTitle, setFilterTitle] = useState<string>("all");
@@ -120,10 +120,6 @@ export default function AdminDashboard() {
 
   // Derived Stats
   const hasFilters = filterLecturerId !== null || filterStartYear !== "all" || filterEndYear !== "all";
-  
-  const totalImpactScore = useMemo(() => {
-    return filteredPapers.reduce((sum, p) => sum + getPaperImpactScore(p.venue), 0);
-  }, [filteredPapers]);
 
   const venueCounts: Record<string, number> = {};
   filteredPapers.forEach((p) => {
@@ -133,13 +129,11 @@ export default function AdminDashboard() {
 
   // Leaderboards
   const lecturerStats = useMemo(() => {
-    const stats: Record<number, { count: number; score: number }> = {};
+    const stats: Record<number, { count: number }> = {};
     filteredPapers.forEach((p) => {
-      const score = getPaperImpactScore(p.venue);
       (p.lecturerIds || []).forEach((lid) => {
-        if (!stats[lid]) stats[lid] = { count: 0, score: 0 };
+        if (!stats[lid]) stats[lid] = { count: 0 };
         stats[lid].count += 1;
-        stats[lid].score += score;
       });
     });
     return stats;
@@ -157,10 +151,6 @@ export default function AdminDashboard() {
         (p.lecturerIds || []).includes(lecturer.id)
       );
       const totalPapers = lecturerPapers.length;
-      const impactScore = lecturerPapers.reduce(
-        (sum, p) => sum + getPaperImpactScore(p.venue),
-        0
-      );
 
       const papersByYear: Record<number, number> = {};
       lecturerPapers.forEach((p) => {
@@ -181,7 +171,6 @@ export default function AdminDashboard() {
       return {
         ...lecturer,
         totalPapers,
-        impactScore,
         papersByYear,
         rankBuckets,
         latestYear,
@@ -233,7 +222,6 @@ export default function AdminDashboard() {
       let cmp = 0;
       if (lecturerSortKey === "name") cmp = a.name.localeCompare(b.name, "vi");
       else if (lecturerSortKey === "totalPapers") cmp = a.totalPapers - b.totalPapers;
-      else if (lecturerSortKey === "impactScore") cmp = a.impactScore - b.impactScore;
       else if (lecturerSortKey === "latestYear") cmp = a.latestYear - b.latestYear;
       return lecturerSortDir === "desc" ? -cmp : cmp;
     });
@@ -247,10 +235,8 @@ export default function AdminDashboard() {
     const total = filteredLecturerAnalytics.length;
     const withPapers = filteredLecturerAnalytics.filter((l) => l.totalPapers > 0).length;
     const totalPapersSum = filteredLecturerAnalytics.reduce((s, l) => s + l.totalPapers, 0);
-    const totalImpactSum = filteredLecturerAnalytics.reduce((s, l) => s + l.impactScore, 0);
     const avgPapers = total > 0 ? (totalPapersSum / total).toFixed(1) : "0";
-    const avgImpact = total > 0 ? (totalImpactSum / total).toFixed(1) : "0";
-    return { total, withPapers, totalPapersSum, totalImpactSum, avgPapers, avgImpact };
+    return { total, withPapers, totalPapersSum, avgPapers };
   }, [filteredLecturerAnalytics]);
 
   // Available titles for the filter dropdown
@@ -274,12 +260,6 @@ export default function AdminDashboard() {
 
   const topLecturersByVolume = [...lecturers]
     .map((l) => ({ ...l, stat: lecturerStats[l.id]?.count || 0 }))
-    .filter(l => l.stat > 0)
-    .sort((a, b) => b.stat - a.stat)
-    .slice(0, 5);
-
-  const topLecturersByImpact = [...lecturers]
-    .map((l) => ({ ...l, stat: lecturerStats[l.id]?.score || 0 }))
     .filter(l => l.stat > 0)
     .sort((a, b) => b.stat - a.stat)
     .slice(0, 5);
@@ -615,9 +595,6 @@ export default function AdminDashboard() {
                          {paper.venue}
                        </Badge>
                        <span className="text-xs text-muted-foreground">{paper.year}</span>
-                       <Badge variant="secondary" className="text-[10px] uppercase">
-                         {getPaperImpactScore(paper.venue)} điểm
-                       </Badge>
                      </div>
                    </div>
                  </div>
@@ -745,7 +722,7 @@ export default function AdminDashboard() {
         </CardHeader>
 
         {/* Summary stats strip */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 divide-x divide-border border-b bg-muted/20">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b bg-muted/20">
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tổng GV</div>
             <div className="text-lg font-semibold font-heading text-foreground">{lecturerSummary.total}</div>
@@ -761,14 +738,6 @@ export default function AdminDashboard() {
           <div className="px-4 py-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">TB bài/GV</div>
             <div className="text-lg font-semibold font-heading text-emerald-500">{lecturerSummary.avgPapers}</div>
-          </div>
-          <div className="px-4 py-3 text-center">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Tổng Impact</div>
-            <div className="text-lg font-semibold font-heading text-indigo-500">{lecturerSummary.totalImpactSum}</div>
-          </div>
-          <div className="px-4 py-3 text-center">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">TB Impact/GV</div>
-            <div className="text-lg font-semibold font-heading text-amber-500">{lecturerSummary.avgImpact}</div>
           </div>
         </div>
         <CardContent className="p-0">

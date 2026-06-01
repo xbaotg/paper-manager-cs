@@ -9,7 +9,7 @@ import {
   type KpiIndicator,
   type KpiCell,
 } from "./kpi";
-import { getPaperImpactScore, getVenueRankBucket } from "./venues";
+import { getVenueRankBucket } from "./venues";
 import { getLecturerById } from "./queries/lecturers";
 import { getPapersByLecturer, listPapers } from "./queries/papers";
 import { getBoMonById } from "./queries/bo_mon";
@@ -38,7 +38,6 @@ export interface LecturerProfile {
   papers: ProfilePaper[];
   stats: {
     total: number;
-    impact: number;
     scopusIndexed: number;
     q1: number;
     byYear: Record<number, number>;
@@ -67,12 +66,10 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
   // Stats
   const byYear: Record<number, number> = {};
   const rankBuckets: Record<string, number> = {};
-  let impact = 0;
   let scopusIndexed = 0;
   let q1 = 0;
   for (const p of own) {
     byYear[p.year] = (byYear[p.year] || 0) + 1;
-    impact += getPaperImpactScore(p.venue);
     const bucket = p.venue ? getVenueRankBucket(p.venue) : "Chưa phân loại";
     rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
     if (p.scopusIndexStatus === "indexed") {
@@ -100,7 +97,7 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
     boMonName,
     account,
     papers,
-    stats: { total: own.length, impact: Number(impact.toFixed(1)), scopusIndexed, q1, byYear, rankBuckets },
+    stats: { total: own.length, scopusIndexed, q1, byYear, rankBuckets },
     indicators,
     kpiByPeriod,
     development,

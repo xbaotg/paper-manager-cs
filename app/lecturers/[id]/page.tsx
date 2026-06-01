@@ -5,7 +5,7 @@ import { Navbar } from "@/app/_components/navbar";
 import { Footer } from "@/app/_components/footer";
 import { getDatabase } from "@/app/actions";
 import { Paper, Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
-import { getPaperImpactScore, getVenueRankBucket } from "@/lib/venues";
+import { getVenueRankBucket } from "@/lib/venues";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -44,12 +44,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
   const stats = useMemo(() => {
     const byYear: Record<number, number> = {};
     const rankBuckets: Record<string, number> = {};
-    let totalImpact = 0;
 
     lecturerPapers.forEach(p => {
       byYear[p.year] = (byYear[p.year] || 0) + 1;
-      const score = getPaperImpactScore(p.venue);
-      totalImpact += score;
 
       if (p.venue) {
         const bucket = getVenueRankBucket(p.venue);
@@ -61,7 +58,6 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
 
     return {
       total: lecturerPapers.length,
-      impact: Number(totalImpact.toFixed(1)),
       byYear,
       rankBuckets
     };
@@ -173,15 +169,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
-                      <div className="text-3xl font-semibold text-primary font-heading">{stats.total}</div>
-                      <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Bài viết</div>
-                    </div>
-                    <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40">
-                      <div className="text-3xl font-semibold text-indigo-600 font-heading dark:text-indigo-400">{stats.impact}</div>
-                      <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Điểm Impact</div>
-                    </div>
+                  <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
+                    <div className="text-3xl font-semibold text-primary font-heading">{stats.total}</div>
+                    <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Bài viết</div>
                   </div>
 
                   <div>
@@ -287,7 +277,6 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                              Bài báo {sortField === "title" && (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                            </button>
                          </TableHead>
-                         <TableHead className="w-[120px] pr-6 text-right">Tác nhân</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -295,12 +284,11 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                         sortedAndFilteredPapers.map((paper) => {
                           const rankBucket = paper.venue ? getVenueRankBucket(paper.venue) : "Khác";
                           const isHighRank = rankBucket.includes("Cao");
-                          const score = getPaperImpactScore(paper.venue);
-                          
+
                           return (
                             <TableRow key={paper.id} className="hover:bg-muted/30">
                               <TableCell className="font-medium align-top pl-4 pt-5">{paper.year}</TableCell>
-                              <TableCell className="align-top pt-5 pb-6">
+                              <TableCell className="align-top pt-5 pb-6 pr-6">
                                 <Link href={`/papers/${paper.id}`} className="font-semibold text-[15px] hover:text-primary hover:underline group flex items-start gap-1 leading-snug">
                                   {paper.title}
                                   <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 text-primary transition-all shrink-0 mt-1" />
@@ -319,19 +307,12 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                                   </p>
                                 )}
                               </TableCell>
-                              <TableCell className="align-top pt-5 pr-6 text-right">
-                                {score > 0 ? (
-                                  <Badge variant="secondary" className="font-mono bg-indigo-50/50 text-indigo-700 border border-indigo-100/50 px-2 py-0.5">+{score}</Badge>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">—</span>
-                                )}
-                              </TableCell>
                             </TableRow>
                           )
                         })
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={3} className="h-32 text-center text-muted-foreground">
+                          <TableCell colSpan={2} className="h-32 text-center text-muted-foreground">
                             Không tìm thấy bài báo nào phù hợp với bộ lọc hiện tại.
                           </TableCell>
                         </TableRow>

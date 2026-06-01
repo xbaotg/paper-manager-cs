@@ -164,6 +164,16 @@ const MIGRATIONS: Migration[] = [
       db.exec(`UPDATE papers SET submission_status = 'accepted' WHERE scopus_index_status = 'accepted'`);
     },
   },
+
+  // --- Drop deprecated 'paper_points' (Điểm công bố / Impact) indicator. ---
+  // The indicator was removed from the UI; cascade clears any per-lecturer and
+  // faculty targets that referenced it so the dropped row leaves no orphans.
+  {
+    id: "0007_drop_paper_points_indicator",
+    up: (db) => {
+      db.exec(`DELETE FROM kpi_indicators WHERE code = 'paper_points'`);
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

@@ -12,7 +12,6 @@ const SEED_FLAG = "seeded_core_v1";
 // + a new `agg` arm in lib/kpi.ts) without schema changes.
 const DEFAULT_INDICATORS = [
   { code: "paper_count", name_vi: "Số bài báo", unit: "bài", agg: "count" },
-  { code: "paper_points", name_vi: "Điểm công bố (theo hạng)", unit: "điểm", agg: "weighted_points" },
   { code: "scopus_paper_count", name_vi: "Số bài Scopus", unit: "bài", agg: "scopus_count" },
   { code: "q1_count", name_vi: "Số bài Q1", unit: "bài", agg: "q1_count" },
   { code: "phd_count", name_vi: "Số giảng viên trình độ Tiến sĩ", unit: "người", agg: "phd_count" },

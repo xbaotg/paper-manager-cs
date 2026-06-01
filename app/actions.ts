@@ -4,8 +4,10 @@ import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, getPaperById } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
+import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager } from "@/lib/dal";
 import type { Paper, Lecturer } from "@/lib/data";
+import type { Venue } from "@/lib/venues";
 
 // Read-only snapshot — public (the home page + lecturer directory are public).
 export async function getDatabase(): Promise<DatabaseSchema> {
@@ -106,4 +108,32 @@ export async function saveAuthorAliasServer(rawName: string, lecturerId: number)
   await requireAuth();
   setAlias(rawName, lecturerId);
   return readDatabase();
+}
+
+// Venue catalog — DB-backed. The full list is public (paper forms render it
+// for everyone), but mutations require auth so anonymous visitors cannot grow
+// the catalog. The picker/admin page replace their local copy with the result.
+export async function listVenuesServer(): Promise<Venue[]> {
+  return listVenues();
+}
+
+export async function addCustomVenueServer(v: Omit<Venue, "id">): Promise<Venue[]> {
+  await requireAuth();
+  createCustomVenue(v);
+  return listVenues();
+}
+
+export async function updateVenueServer(
+  code: string,
+  overrides: Partial<Omit<Venue, "id" | "code">>
+): Promise<Venue[]> {
+  await requireAuth();
+  updateVenueByCode(code, overrides);
+  return listVenues();
+}
+
+export async function deleteVenueServer(code: string): Promise<Venue[]> {
+  await requireManager();
+  deleteVenueByCode(code);
+  return listVenues();
 }

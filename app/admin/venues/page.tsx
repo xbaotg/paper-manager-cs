@@ -41,8 +41,10 @@ export default function VenuesManagementPage() {
   const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
 
   useEffect(() => {
-    hydrateVenues();
-    setLoaded(true);
+    hydrateVenues().finally(() => {
+      setForceRender((c) => c + 1);
+      setLoaded(true);
+    });
   }, []);
 
   const filteredVenues = useMemo(() => {
@@ -78,20 +80,20 @@ export default function VenuesManagementPage() {
     setIsFormOpen(true);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (venueToDelete) {
-      deleteVenue(venueToDelete.code);
+      await deleteVenue(venueToDelete.code);
       setForceRender(c => c + 1);
       setIsDeleteOpen(false);
       setVenueToDelete(null);
     }
   }
 
-  function handleFormSave(venue: Venue, isNew: boolean) {
+  async function handleFormSave(venue: Venue, isNew: boolean) {
     if (isNew) {
-      saveCustomVenue(venue);
+      await saveCustomVenue(venue);
     } else {
-      editVenue(venue.code, {
+      await editVenue(venue.code, {
         nameEn: venue.nameEn,
         nameVi: venue.nameVi,
         type: venue.type,
