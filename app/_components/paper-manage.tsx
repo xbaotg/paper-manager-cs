@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  ArrowLeft, Pencil, Trash2, ExternalLink, Link as LinkIcon, Users, Award, CalendarDays,
+  ArrowLeft, Pencil, Trash2, ExternalLink, Link as LinkIcon, Users, CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { updatePaperServer, deletePaperServer, updateCreditedAuthorServer } from "@/app/actions";
-import { getVenueRankBucket, getPaperImpactScore } from "@/lib/venues";
+import { getVenueRankBucket } from "@/lib/venues";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import { SUBMISSION_STATUS_LABEL } from "@/lib/data";
 
@@ -59,7 +59,6 @@ export function PaperManage({
   const [pending, startTransition] = useTransition();
 
   const bucket = paper.venue ? getVenueRankBucket(paper.venue) : "Khác";
-  const score = getPaperImpactScore(paper.venue);
   const lecturerById = new Map(lecturers.map((l) => [l.id, l]));
   const credited = paper.creditedLecturerId != null ? lecturerById.get(paper.creditedLecturerId) : null;
   const internal = (paper.lecturerIds ?? []).map((id) => lecturerById.get(id)).filter(Boolean) as Lecturer[];
@@ -133,7 +132,6 @@ export function PaperManage({
               {paper.scopusIndexStatus === "indexed" && (
                 <Badge variant="outline" className="text-green-600 border-green-600/40">Scopus {paper.scopusIndexYear ?? ""}</Badge>
               )}
-              {score > 0 && <Badge variant="secondary" className="font-mono gap-1"><Award className="size-3" /> +{score}</Badge>}
             </div>
           </div>
 

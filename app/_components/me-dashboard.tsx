@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText, Award, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ExternalLink, FilterX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,10 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { addPaperServer, updatePaperServer, deletePaperServer } from "@/app/actions";
-import { getPaperImpactScore, getVenueRankBucket } from "@/lib/venues";
+import { getVenueRankBucket } from "@/lib/venues";
 import type { Paper, Lecturer } from "@/lib/data";
 
 export function MeDashboard({
@@ -37,12 +43,25 @@ export function MeDashboard({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Paper | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
+  const [filterStartYear, setFilterStartYear] = useState<string>("all");
+  const [filterEndYear, setFilterEndYear] = useState<string>("all");
   const [, startTransition] = useTransition();
 
-  const totalImpact = useMemo(
-    () => papers.reduce((s, p) => s + getPaperImpactScore(p.venue), 0),
+  // Year list derived from this lecturer's papers, descending.
+  const years = useMemo(
+    () => [...new Set(papers.map((p) => p.year))].sort((a, b) => b - a),
     [papers]
   );
+
+  const filteredPapers = useMemo(() => {
+    return papers.filter((p) => {
+      if (filterStartYear !== "all" && p.year < parseInt(filterStartYear, 10)) return false;
+      if (filterEndYear !== "all" && p.year > parseInt(filterEndYear, 10)) return false;
+      return true;
+    });
+  }, [papers, filterStartYear, filterEndYear]);
+
+  const hasFilters = filterStartYear !== "all" || filterEndYear !== "all";
 
   // Keep only this lecturer's papers from a full DB snapshot.
   function mine(all: Paper[]): Paper[] {
@@ -95,29 +114,59 @@ export function MeDashboard({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-5">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileText className="size-5 text-primary" />
+      <Card>
+        <CardContent className="flex items-center gap-3 p-5">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <FileText className="size-5 text-primary" />
+          </div>
+          <div>
+            <div className="text-2xl font-semibold">{filteredPapers.length}</div>
+            <div className="text-xs text-muted-foreground">
+              {hasFilters ? `Bài báo trong phạm vi lọc (tổng ${papers.length})` : "Tổng bài báo"}
             </div>
-            <div>
-              <div className="text-2xl font-semibold">{papers.length}</div>
-              <div className="text-xs text-muted-foreground">Tổng bài báo</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-5">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Award className="size-5 text-amber-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold">{totalImpact.toFixed(1)}</div>
-              <div className="text-xs text-muted-foreground">Điểm công bố (ước tính)</div>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Year range filter */}
+      <div className="flex flex-wrap gap-3 items-center bg-card p-4 rounded-xl border shadow-sm">
+        <div className="text-sm font-semibold text-muted-foreground mr-2">LỌC NĂM:</div>
+        <Select value={filterStartYear} onValueChange={(v) => setFilterStartYear(v || "all")}>
+          <SelectTrigger className="w-[150px] h-9">
+            <span className="truncate text-sm">{filterStartYear === "all" ? "Từ năm: Tất cả" : `Từ năm: ${filterStartYear}`}</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Từ năm: Tất cả</SelectItem>
+            {years.map((y) => (
+              <SelectItem key={`start-${y}`} value={String(y)}>Từ năm: {y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span className="text-muted-foreground text-sm">—</span>
+
+        <Select value={filterEndYear} onValueChange={(v) => setFilterEndYear(v || "all")}>
+          <SelectTrigger className="w-[150px] h-9">
+            <span className="truncate text-sm">{filterEndYear === "all" ? "Đến năm: Tất cả" : `Đến năm: ${filterEndYear}`}</span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Đến năm: Tất cả</SelectItem>
+            {years.map((y) => (
+              <SelectItem key={`end-${y}`} value={String(y)}>Đến năm: {y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setFilterStartYear("all"); setFilterEndYear("all"); }}
+            className="text-muted-foreground hover:text-destructive h-9"
+          >
+            <FilterX className="size-4 mr-2" /> Xóa lọc
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border bg-card overflow-hidden">
@@ -131,7 +180,7 @@ export function MeDashboard({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {papers.map((p) => (
+            {filteredPapers.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>
                   <Link href={`/papers/${p.id}`} className="font-medium hover:text-primary hover:underline">{p.title}</Link>
@@ -161,10 +210,12 @@ export function MeDashboard({
                 </TableCell>
               </TableRow>
             ))}
-            {papers.length === 0 && (
+            {filteredPapers.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                  Chưa có bài báo nào. Nhấn “Thêm bài báo” để bắt đầu.
+                  {papers.length === 0
+                    ? "Chưa có bài báo nào. Nhấn “Thêm bài báo” để bắt đầu."
+                    : "Không có bài báo nào trong phạm vi năm đã chọn."}
                 </TableCell>
               </TableRow>
             )}

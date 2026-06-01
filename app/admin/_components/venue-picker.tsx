@@ -53,16 +53,19 @@ export function VenuePicker({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [transientVenue, setTransientVenue] = useState<Venue | null>(null);
 
-  // Find the currently selected venue
+  // Pull the venue catalog (incl. user-added entries) from the server. Local
+  // state mirrors VENUES.length so the filter recomputes after hydration even
+  // though VENUES itself is module-level.
+  const [venuesVersion, setVenuesVersion] = useState(0);
+  useEffect(() => {
+    hydrateVenues().then(() => setVenuesVersion((v) => v + 1));
+  }, []);
+
+  // Find the currently selected venue (re-resolve when the catalog refreshes).
   const selectedVenue = useMemo(
     () => VENUES.find((v) => v.code === value),
-    [value]
+    [value, venuesVersion]
   );
-
-  // Load override venues from LS
-  useEffect(() => {
-    hydrateVenues();
-  }, []);
 
   // Filter venues
   const filtered = useMemo(() => {
@@ -92,7 +95,7 @@ export function VenuePicker({
     }
     
     return results;
-  }, [search, VENUES.length]);
+  }, [search, venuesVersion]);
 
   // Close on outside click
   useEffect(() => {
@@ -163,8 +166,9 @@ export function VenuePicker({
     setOpen(false);
   }
 
-  function handleSaveCustomVenue(newVenue: Venue, isNew: boolean) {
-    saveCustomVenue(newVenue);
+  async function handleSaveCustomVenue(newVenue: Venue, _isNew: boolean) {
+    await saveCustomVenue(newVenue);
+    setVenuesVersion((v) => v + 1);
     onChange(newVenue.code, newVenue);
   }
 

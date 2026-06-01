@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getVenueRankBucket, getPaperImpactScore } from "@/lib/venues";
+import { getVenueRankBucket } from "@/lib/venues";
 import { LECTURER_TITLE_LABELS, ACADEMIC_RANK_LABELS } from "@/lib/data";
 import type { LecturerProfile } from "@/lib/profile";
 import type { DevelopmentStatus } from "@/lib/queries/development";
@@ -79,9 +79,8 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Stat label="Bài báo" value={stats.total} />
-        <Stat label="Điểm impact" value={stats.impact} />
         <Stat label="Bài Scopus" value={stats.scopusIndexed} />
         <Stat label="Bài Q1" value={stats.q1} />
       </div>
@@ -160,16 +159,14 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
               <TableRow>
                 <TableHead className="w-[70px]">Năm</TableHead>
                 <TableHead>Bài báo</TableHead>
-                <TableHead className="w-[90px] text-right">Impact</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {papers.length === 0 && (
-                <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-8">Chưa có công bố.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-8">Chưa có công bố.</TableCell></TableRow>
               )}
               {papers.map((p) => {
                 const bucket = p.venue ? getVenueRankBucket(p.venue) : "Khác";
-                const score = getPaperImpactScore(p.venue);
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="align-top font-medium pt-4">{p.year}</TableCell>
@@ -184,9 +181,6 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
                         {p.scopusIndexStatus === "indexed" && <Badge variant="outline" className="text-[10px] text-green-600 border-green-600/40">Scopus {p.scopusIndexYear ?? ""}</Badge>}
                         {p.credited && <Badge variant="outline" className="text-[10px] text-primary border-primary/40">Được tính KPI</Badge>}
                       </div>
-                    </TableCell>
-                    <TableCell className="align-top pt-4 text-right">
-                      {score > 0 ? <Badge variant="secondary" className="font-mono">+{score}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                   </TableRow>
                 );

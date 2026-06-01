@@ -94,10 +94,10 @@ CREATE TABLE IF NOT EXISTS kpi_periods (
 
 CREATE TABLE IF NOT EXISTS kpi_indicators (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
-  code      TEXT NOT NULL UNIQUE,           -- 'paper_count' | 'paper_points' | 'scopus_paper_count' | 'q1_count' | 'phd_count'
+  code      TEXT NOT NULL UNIQUE,           -- 'paper_count' | 'scopus_paper_count' | 'q1_count' | 'phd_count'
   name_vi   TEXT NOT NULL,
-  unit      TEXT NOT NULL,                  -- 'bài' | 'điểm' | 'người'
-  agg       TEXT NOT NULL,                  -- 'count' | 'weighted_points' | 'scopus_count' | 'q1_count' | 'phd_count'
+  unit      TEXT NOT NULL,                  -- 'bài' | 'người'
+  agg       TEXT NOT NULL,                  -- 'count' | 'scopus_count' | 'q1_count' | 'phd_count'
   is_active INTEGER NOT NULL DEFAULT 1
 );
 
