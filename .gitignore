@@ -40,3 +40,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# sqlite datastore (created at runtime / on the docker volume)
+*.db
+*.db-wal
+*.db-shm
+.claude/scheduled_tasks.lock
+
+# Runtime data + scratch
+/data/
+/prod.log
+/.next.old.*
+/.next.stale.*
+
+# Local screenshots / scratch images
+/image*.png

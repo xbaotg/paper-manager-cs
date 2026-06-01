@@ -256,7 +256,7 @@ export function BibtexImportDialog({
                         {res.authors.map(a => a.rawName).join(", ")}
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-muted-foreground">
+                        <div className="flex items-center gap-2 text-[10px] uppercase font-semibold text-muted-foreground">
                           {res.year && <Badge variant="secondary" className="px-1.5 py-0 rounded text-[9px]">{res.year}</Badge>}
                           {res.venueMatch?.code || res.venueRaw || "N/A"}
                         </div>

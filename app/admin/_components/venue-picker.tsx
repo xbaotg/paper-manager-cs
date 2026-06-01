@@ -274,7 +274,7 @@ export function VenuePicker({
                     {isCustom ? (
                        <div className="flex items-center gap-2 text-indigo-600 font-medium">
                           <Plus className="size-4 shrink-0" />
-                          <span>Tạo hội nghị/tạp chí tùy chỉnh: <span className="font-bold underline decoration-indigo-300 underline-offset-2">"{v.nameEn}"</span></span>
+                          <span>Tạo hội nghị/tạp chí tùy chỉnh: <span className="font-semibold underline decoration-indigo-300 underline-offset-2">"{v.nameEn}"</span></span>
                        </div>
                     ) : (
                       <>
@@ -282,7 +282,7 @@ export function VenuePicker({
                         <span className="font-semibold text-primary min-w-[60px]">
                           {v.code}
                         </span>
-                        <span className="text-muted-foreground truncate flex-1 text-xs">
+                        <span className="text-muted-foreground break-words flex-1 text-xs text-left">
                           {v.nameEn}
                         </span>
                         {v.rank && (

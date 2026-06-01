@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
@@ -203,7 +205,7 @@ export default function PapersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-heading flex items-center gap-2">
+          <h1 className="text-2xl font-semibold font-heading flex items-center gap-2">
             <FileText className="size-6 text-primary" />
             Quản lý bài báo
           </h1>
@@ -399,9 +401,12 @@ export default function PapersPage() {
                       />
                     </TableCell>
                     <TableCell className="py-4 whitespace-normal">
-                      <p className="font-medium text-sm leading-snug break-words group-hover:text-primary transition-colors">
+                      <Link
+                        href={`/papers/${paper.id}`}
+                        className="font-medium text-sm leading-snug break-words hover:text-primary hover:underline transition-colors"
+                      >
                         {paper.title}
-                      </p>
+                      </Link>
                       {paper.doi && (
                         <div className="text-xs text-muted-foreground mt-1">
                           DOI: <span className="font-mono text-[11px] bg-muted/30 px-1 py-0.5 rounded">{paper.doi}</span>

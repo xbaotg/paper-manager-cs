@@ -5743,3 +5743,10 @@ export function getPaperImpactScore(venueCode: string): number {
   if (bucket === "Đang lên (C, Q3, Q4)") return 1;
   return 0.5; // Chưa phân loại gets a tiny score just for volume
 }
+
+// Q1 specifically (the dept's 30% / 17-paper target keys on Q1, not the broad
+// "Hạng Cao" bucket which also covers A*/A conferences).
+export function isVenueQ1(venueCode: string): boolean {
+  const vn = getVenueByCode(venueCode);
+  return !!vn && vn.rank.toUpperCase().includes("Q1");
+}

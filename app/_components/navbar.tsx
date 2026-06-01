@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BookOpen, Plus, Menu, X, Shield } from "lucide-react";
+import { BookOpen, Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navbar() {
@@ -17,23 +17,20 @@ export function Navbar() {
 
   const links = [
     { label: "Tính năng", href: "/#features" },
-    { label: "Nhập bài báo", href: "/#submit" },
     { label: "Danh sách", href: "/#publications" },
     { label: "Thống kê", href: "/#statistics" },
-    { label: "Giảng viên", href: "/admin" },
+    { label: "Giảng viên", href: "/lecturers" },
   ];
-
-  const adminLink = { label: "Admin", href: "/admin", icon: Shield };
 
   return (
     <nav
-      className={`fixed top-4 left-4 right-4 z-50 flex items-center justify-between h-16 px-6 rounded-2xl border border-border/50 bg-background/75 backdrop-blur-xl transition-shadow ${scrolled ? "shadow-lg" : ""}`}
+      className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between h-16 px-6 lg:px-8 border-b bg-background/85 backdrop-blur-xl transition-colors ${scrolled ? "border-border" : "border-transparent"}`}
     >
       <Link
         href="#"
-        className="flex items-center gap-2 font-heading font-bold text-lg text-foreground"
+        className="flex items-center gap-2 font-heading font-semibold text-base text-foreground tracking-tight"
       >
-        <BookOpen className="size-6 text-primary" />
+        <BookOpen className="size-5 text-accent-purple" />
         CS Research Hub
       </Link>
 
@@ -43,7 +40,7 @@ export function Navbar() {
           <li key={l.href}>
             <Link
               href={l.href}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors"
             >
               {l.label}
             </Link>
@@ -52,16 +49,10 @@ export function Navbar() {
       </ul>
 
       <div className="hidden md:flex items-center gap-2">
-        <Link href="/admin">
-          <Button variant="outline" size="sm" className="cursor-pointer">
-            <Shield className="size-4" data-icon="inline-start" />
-            Admin
-          </Button>
-        </Link>
-        <Link href="/#submit">
-          <Button size="sm" className="cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90">
-            <Plus className="size-4" data-icon="inline-start" />
-            Thêm bài báo
+        <Link href="/login">
+          <Button size="sm" className="cursor-pointer">
+            <LogIn className="size-4" data-icon="inline-start" />
+            Đăng nhập
           </Button>
         </Link>
       </div>
@@ -91,18 +82,10 @@ export function Navbar() {
               </li>
             ))}
             <li>
-              <Link href="/admin" onClick={() => setOpen(false)}>
-                <Button variant="outline" size="sm" className="w-full cursor-pointer">
-                  <Shield className="size-4" data-icon="inline-start" />
-                  Admin
-                </Button>
-              </Link>
-            </li>
-            <li>
-              <Link href="/#submit" onClick={() => setOpen(false)}>
-                <Button size="sm" className="w-full cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Plus className="size-4" data-icon="inline-start" />
-                  Thêm bài báo
+              <Link href="/login" onClick={() => setOpen(false)}>
+                <Button size="sm" className="w-full cursor-pointer">
+                  <LogIn className="size-4" data-icon="inline-start" />
+                  Đăng nhập
                 </Button>
               </Link>
             </li>

@@ -24,7 +24,7 @@ export function StatsCard({
             <p className="text-sm text-muted-foreground font-medium mb-1">
               {label}
             </p>
-            <p className="text-2xl font-bold font-heading">{value}</p>
+            <p className="text-2xl font-semibold font-heading">{value}</p>
             {subtext && (
               <p className="text-xs text-muted-foreground mt-1">{subtext}</p>
             )}

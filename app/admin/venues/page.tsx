@@ -109,7 +109,7 @@ export default function VenuesManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-heading">Quản lý tạp chí / hội nghị</h1>
+          <h1 className="text-2xl font-semibold font-heading">Quản lý tạp chí / hội nghị</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Tổng cộng: {VENUES.length} nền tảng xuất bản
           </p>
