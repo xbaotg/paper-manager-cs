@@ -6,19 +6,44 @@ services:
     image: paper-manager-cs
     container_name: paper-manager-cs
     ports:
-      # App is served under basePath "/paper" -> http://localhost:3000/paper
+      # App is served under basePath (default "/kpi") -> http://HOST:3000/kpi
       - "3000:3000"
     environment:
       NODE_ENV: production
       DATABASE_FILE: /app/data/app.db
+      # URL prefix — must match `next.config.ts basePath` and the session-cookie path.
+      BASE_PATH: ${BASE_PATH:-/kpi}
       # Signing key for session cookies — REQUIRED. Set in .env.
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       # Bootstrap manager account, created on first boot if no users exist.
       INITIAL_ADMIN_USER: ${INITIAL_ADMIN_USER:-admin}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?set INITIAL_ADMIN_PASSWORD in .env}
     volumes:
-      # Persist the SQLite datastore across container rebuilds/restarts
+      # Persist the SQLite datastore across container rebuilds/restarts.
       - paper-data:/app/data
+    restart: unless-stopped
+
+  # Online SQLite backup sidecar. Reuses the app image and reads the live
+  # datastore through the shared named volume (read-only). Snapshots are
+  # written to the host at ./backups/ — so they survive `docker compose down -v`
+  # (which drops the named volume) and any container rebuild. Rotates to keep
+  # the newest BACKUP_KEEP snapshots.
+  backup:
+    image: paper-manager-cs
+    container_name: paper-manager-cs-backup
+    depends_on:
+      - app
+    entrypoint: ["node", "/app/scripts/backup.js"]
+    environment:
+      DATABASE_FILE: /app/data/app.db
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-21600}  # 6h
+      BACKUP_KEEP: ${BACKUP_KEEP:-60}                              # ≈15 days @ 6h
+      BACKUP_COMPRESS: ${BACKUP_COMPRESS:-1}                       # gzip each snapshot
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    volumes:
+      - paper-data:/app/data:ro
+      - ./backups:/backups
     restart: unless-stopped
 
 volumes:

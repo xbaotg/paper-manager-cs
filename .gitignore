@@ -49,6 +49,8 @@ next-env.d.ts
 
 # Runtime data + scratch
 /data/
+/backups/*
+!/backups/README.md
 /prod.log
 /.next.old.*
 /.next.stale.*

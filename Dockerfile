@@ -41,6 +41,9 @@ COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlit
 # ignored on subsequent boots.
 COPY --from=builder /app/database.json ./data/database.json
 
+# Sidecar scripts (DB online-backup). Reuses better-sqlite3 already shipped above.
+COPY --from=builder /app/scripts ./scripts
+
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
