@@ -50,15 +50,20 @@ export async function decryptSession(token: string | undefined): Promise<Session
   }
 }
 
-// Cookie attributes shared by login/logout. Scoped to the basePath ("/paper").
+// Cookie attributes shared by login/logout. Scoped to the app's basePath. Read
+// from BASE_PATH env (defaults to "/kpi") so cookie + basePath always match —
+// if they drift the browser drops the cookie on navigation and the user looks
+// "logged out" on every page.
 // `Secure` is opt-in via COOKIE_SECURE: browsers drop Secure cookies over plain
 // HTTP, so it must stay off for HTTP deployments and be enabled only behind HTTPS.
+export const COOKIE_PATH = process.env.BASE_PATH || "/kpi";
+
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.COOKIE_SECURE === "true",
     sameSite: "lax" as const,
-    path: "/paper",
+    path: COOKIE_PATH,
     maxAge: MAX_AGE_SECONDS,
   };
 }
