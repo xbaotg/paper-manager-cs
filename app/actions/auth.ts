@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
   encryptSession,
   sessionCookieOptions,
+  COOKIE_PATH,
 } from "@/lib/session";
 import { getUserByUsername } from "@/lib/queries/users";
 import { homeForRole } from "@/lib/dal";
@@ -46,6 +47,6 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 }
 
 export async function logout(): Promise<void> {
-  (await cookies()).delete({ name: SESSION_COOKIE, path: "/paper" });
+  (await cookies()).delete({ name: SESSION_COOKIE, path: COOKIE_PATH });
   redirect("/login");
 }
