@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, Trash2, Target, Users, TrendingUp, Wand2, AlertTriangle } from "lucide-react";
@@ -63,12 +63,35 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
   // year shows a "+" — clicking creates that period in place.
   const YEARS = [2026, 2027, 2028, 2029, 2030];
   const periodByYear = new Map(periods.map((p) => [p.startYear, p]));
+  const LS_KEY = "paperManagerCS_kpiYear_manager";
 
   function reload(periodId?: number) {
     startTransition(async () => {
       setData(await getManagerKpi(periodId));
     });
   }
+
+  // Default to last-selected year (or current calendar year on first visit).
+  // Skips silently when the target period doesn't exist so the empty-year
+  // "+ create" UI keeps working.
+  useEffect(() => {
+    let target: number | null = null;
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      if (stored) target = Number(stored);
+    } catch {}
+    if (target == null || Number.isNaN(target)) target = new Date().getFullYear();
+    const p = periodByYear.get(target);
+    if (p && p.id !== selectedPeriodId) reload(p.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (selectedPeriod) {
+      try { localStorage.setItem(LS_KEY, String(selectedPeriod.startYear)); } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod?.startYear]);
 
   function handleYearClick(year: number) {
     const existing = periodByYear.get(year);
