@@ -57,10 +57,38 @@ export default function AdminDashboard() {
   const [lecturers, setLecturers] = useState<Lecturer[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  // Global Filters
+  // Global Filters. Year range defaults to the current calendar year (the most
+  // common scope on first visit) and is restored from localStorage on later
+  // visits so the chosen tab survives navigation.
+  const KPI_YEAR_LS_KEY = "paperManagerCS_kpiYear_admin";
+  const currentYear = new Date().getFullYear();
   const [filterLecturerId, setFilterLecturerId] = useState<number | null>(null);
-  const [filterStartYear, setFilterStartYear] = useState<string>("all");
-  const [filterEndYear, setFilterEndYear] = useState<string>("all");
+  const [filterStartYear, setFilterStartYear] = useState<string>(String(currentYear));
+  const [filterEndYear, setFilterEndYear] = useState<string>(String(currentYear));
+
+  // Hydrate the year selection from localStorage once on mount.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(KPI_YEAR_LS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as { start: string; end: string };
+        if (parsed.start) setFilterStartYear(parsed.start);
+        if (parsed.end) setFilterEndYear(parsed.end);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist subsequent edits.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        KPI_YEAR_LS_KEY,
+        JSON.stringify({ start: filterStartYear, end: filterEndYear })
+      );
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterStartYear, filterEndYear]);
 
   // Lecturer Analytics state
   const [lecturerSearch, setLecturerSearch] = useState("");

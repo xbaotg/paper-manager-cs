@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Target, TrendingUp, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,10 +30,34 @@ export function HeadKpiView({ initial }: { initial: HeadKpiData }) {
   const YEARS = [2026, 2027, 2028, 2029, 2030];
   const periodByYear = new Map(periods.map((p) => [p.startYear, p]));
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId) ?? null;
+  const LS_KEY = "paperManagerCS_kpiYear_head";
 
   function reload(periodId?: number) {
     startTransition(async () => setData(await getHeadKpi(periodId)));
   }
+
+  // On mount, switch to the user's last-chosen year (or the current calendar
+  // year if no preference is stored yet). Only reloads when the chosen year's
+  // period exists and is not already active.
+  useEffect(() => {
+    let target: number | null = null;
+    try {
+      const stored = localStorage.getItem(LS_KEY);
+      if (stored) target = Number(stored);
+    } catch {}
+    if (target == null || Number.isNaN(target)) target = new Date().getFullYear();
+    const p = periodByYear.get(target);
+    if (p && p.id !== selectedPeriodId) reload(p.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the year corresponding to whatever period the server returns.
+  useEffect(() => {
+    if (selectedPeriod) {
+      try { localStorage.setItem(LS_KEY, String(selectedPeriod.startYear)); } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod?.startYear]);
 
   return (
     <div className="space-y-6">

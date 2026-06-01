@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Target } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -24,10 +24,40 @@ export function MeKpi({ initial }: { initial: MyKpiData }) {
   const [, startTransition] = useTransition();
 
   const { periods, indicators, cells, selectedPeriodId } = data;
+  const LS_KEY = "paperManagerCS_kpiPeriod_me";
+  const selectedPeriod = periods.find((p) => p.id === selectedPeriodId) ?? null;
 
   function reload(periodId: number) {
     startTransition(async () => setData(await getMyKpi(periodId)));
   }
+
+  // Prefer the user's last-viewed period; fall back to the period covering the
+  // current calendar year. Server already picks a sensible default, so this
+  // only fires a reload when the stored/current-year period differs.
+  useEffect(() => {
+    let storedId: number | null = null;
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) storedId = Number(raw);
+    } catch {}
+
+    let target = storedId != null && !Number.isNaN(storedId)
+      ? periods.find((p) => p.id === storedId)
+      : null;
+    if (!target) {
+      const currentYear = new Date().getFullYear();
+      target = periods.find((p) => p.startYear === currentYear);
+    }
+    if (target && target.id !== selectedPeriodId) reload(target.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (selectedPeriod) {
+      try { localStorage.setItem(LS_KEY, String(selectedPeriod.id)); } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriod?.id]);
 
   if (periods.length === 0) {
     return (
