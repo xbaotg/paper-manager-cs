@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,8 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, RotateCcw, Plus } from "lucide-react";
+import { Save, RotateCcw, Plus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { listPaperTitlesServer } from "@/app/actions";
+import { findSimilarTitles } from "@/lib/text-match";
 import {
   Select,
   SelectContent,
@@ -60,6 +62,23 @@ export function PaperFormAdmin({
   const [firstAuthor, setFirstAuthor] = useState(false);
   const [corresponding, setCorresponding] = useState(false);
   const [isBibtexOpen, setIsBibtexOpen] = useState(false);
+  const [existingTitles, setExistingTitles] = useState<{ id: number; title: string }[]>([]);
+
+  // Load existing titles once the dialog opens, to flag near-duplicate titles.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    listPaperTitlesServer()
+      .then((rows) => { if (!cancelled) setExistingTitles(rows); })
+      .catch(() => { /* non-critical: dup warning just won't show */ });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  // Titles >= 80% similar to the one being entered (excludes the paper being edited).
+  const similarTitles = useMemo(
+    () => findSimilarTitles(form.title, existingTitles, { excludeId: editingPaper?.id ?? null }),
+    [form.title, existingTitles, editingPaper]
+  );
 
   useEffect(() => {
     if (editingPaper) {
@@ -220,6 +239,22 @@ export function PaperFormAdmin({
               required
               className="h-11"
             />
+            {similarTitles.length > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <div className="flex items-center gap-1.5 font-medium text-amber-700">
+                  <AlertTriangle className="size-4" />
+                  Có {similarTitles.length} bài báo tiêu đề tương tự (≥ 80%) — kiểm tra tránh trùng lặp
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {similarTitles.map((m) => (
+                    <li key={m.id} className="text-amber-800/90">
+                      <span className="font-mono text-xs rounded bg-amber-500/20 px-1 py-0.5">{Math.round(m.score * 100)}%</span>{" "}
+                      {m.title}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* Year */}

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FileText, ExternalLink, FilterX } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, ExternalLink, FilterX, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +45,7 @@ export function MeDashboard({
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
   const [filterStartYear, setFilterStartYear] = useState<string>("all");
   const [filterEndYear, setFilterEndYear] = useState<string>("all");
+  const [yearSortDir, setYearSortDir] = useState<"asc" | "desc">("desc");
   const [, startTransition] = useTransition();
 
   // Year list derived from this lecturer's papers, descending.
@@ -54,12 +55,17 @@ export function MeDashboard({
   );
 
   const filteredPapers = useMemo(() => {
-    return papers.filter((p) => {
+    const list = papers.filter((p) => {
       if (filterStartYear !== "all" && p.year < parseInt(filterStartYear, 10)) return false;
       if (filterEndYear !== "all" && p.year > parseInt(filterEndYear, 10)) return false;
       return true;
     });
-  }, [papers, filterStartYear, filterEndYear]);
+    list.sort((a, b) => {
+      const cmp = a.year - b.year;
+      return (yearSortDir === "desc" ? -cmp : cmp) || b.id - a.id;
+    });
+    return list;
+  }, [papers, filterStartYear, filterEndYear, yearSortDir]);
 
   const hasFilters = filterStartYear !== "all" || filterEndYear !== "all";
 
@@ -174,7 +180,17 @@ export function MeDashboard({
           <TableHeader>
             <TableRow>
               <TableHead>Tên bài báo</TableHead>
-              <TableHead className="w-20">Năm</TableHead>
+              <TableHead className="w-20">
+                <button
+                  type="button"
+                  onClick={() => setYearSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                  className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+                  title="Sắp xếp theo năm"
+                >
+                  Năm
+                  {yearSortDir === "desc" ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
+                </button>
+              </TableHead>
               <TableHead className="w-28">Nơi đăng</TableHead>
               <TableHead className="w-24 text-right">Thao tác</TableHead>
             </TableRow>

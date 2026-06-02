@@ -1,7 +1,7 @@
 "use server";
 
 import { readDatabase, type DatabaseSchema } from "@/lib/db";
-import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, getPaperById } from "@/lib/queries/papers";
+import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, getPaperById, listPaperTitles } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode } from "@/lib/queries/venues";
@@ -23,6 +23,13 @@ async function requireAuth() {
 // Ensure a lecturer remains attached to their own paper.
 function withSelf(lecturerIds: number[] | undefined, lecturerId: number): number[] {
   return Array.from(new Set([...(lecturerIds ?? []), lecturerId]));
+}
+
+// id+title of every paper, for the add-paper form's fuzzy duplicate-title
+// warning. Auth-gated (only signed-in users reach the paper forms).
+export async function listPaperTitlesServer(): Promise<{ id: number; title: string }[]> {
+  await requireAuth();
+  return listPaperTitles();
 }
 
 export async function addPaperServer(paper: Paper): Promise<DatabaseSchema> {

@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,7 @@ export default function PapersPage() {
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterLecturer, setFilterLecturer] = useState<number | null>(null);
   const [filterVenue, setFilterVenue] = useState<string>("all");
+  const [yearSortDir, setYearSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -131,11 +134,14 @@ export default function PapersPage() {
       result = result.filter((p) => p.venue === filterVenue);
     }
 
-    // Sort by newest first
-    result.sort((a, b) => b.year - a.year || b.id - a.id);
+    // Sort by year (direction toggled via the "Năm" column header), newest id as tiebreak
+    result.sort((a, b) => {
+      const cmp = a.year - b.year;
+      return (yearSortDir === "desc" ? -cmp : cmp) || b.id - a.id;
+    });
 
     return result;
-  }, [papers, search, filterYear, filterLecturer, filterVenue]);
+  }, [papers, search, filterYear, filterLecturer, filterVenue, yearSortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -357,7 +363,15 @@ export default function PapersPage() {
                   Tên bài báo
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 text-center w-[8%]">
-                  Năm
+                  <button
+                    type="button"
+                    onClick={() => { setYearSortDir((d) => (d === "asc" ? "desc" : "asc")); setPage(1); }}
+                    className="inline-flex items-center gap-1 mx-auto hover:text-foreground transition-colors cursor-pointer uppercase"
+                    title="Sắp xếp theo năm"
+                  >
+                    Năm
+                    {yearSortDir === "desc" ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
+                  </button>
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[10%]">
                   Hội nghị

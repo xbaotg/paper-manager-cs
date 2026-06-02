@@ -94,7 +94,9 @@ export default function AdminDashboard() {
   const [lecturerSearch, setLecturerSearch] = useState("");
   const [lecturerSortKey, setLecturerSortKey] = useState<"name" | "totalPapers" | "latestYear">("totalPapers");
   const [lecturerSortDir, setLecturerSortDir] = useState<"asc" | "desc">("desc");
-  
+  // Year-sort direction for the per-lecturer paper list card.
+  const [recentSortDir, setRecentSortDir] = useState<"asc" | "desc">("desc");
+
   const [filterTitle, setFilterTitle] = useState<string>("all");
   const [filterMinPapers, setFilterMinPapers] = useState<string>("0");
   const [filterRankBucket, setFilterRankBucket] = useState<string>("all");
@@ -292,7 +294,12 @@ export default function AdminDashboard() {
     .sort((a, b) => b.stat - a.stat)
     .slice(0, 5);
 
-  const recentPapers = [...filteredPapers].sort((a, b) => b.id - a.id).slice(0, 5);
+  const recentPapers = [...filteredPapers]
+    .sort((a, b) => {
+      const cmp = a.year - b.year;
+      return (recentSortDir === "desc" ? -cmp : cmp) || b.id - a.id;
+    })
+    .slice(0, 5);
 
   if (!loaded) {
     return (
@@ -607,10 +614,20 @@ export default function AdminDashboard() {
         {filterLecturerId !== null && (
            <Card className="lg:col-span-2 shadow-sm border-border/50">
            <CardHeader className="pb-2">
-             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
-               <FileText className="size-4 text-primary" />
-               Các bài báo đã xếp hạng
-             </CardTitle>
+             <div className="flex items-center justify-between gap-2">
+               <CardTitle className="text-sm font-semibold flex items-center gap-2 text-muted-foreground uppercase">
+                 <FileText className="size-4 text-primary" />
+                 Các bài báo đã xếp hạng
+               </CardTitle>
+               <button
+                 type="button"
+                 onClick={() => setRecentSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                 title="Sắp xếp theo năm"
+               >
+                 Năm {recentSortDir === "desc" ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+               </button>
+             </div>
            </CardHeader>
            <CardContent className="p-6">
              <div className="space-y-3">

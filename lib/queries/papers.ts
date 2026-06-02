@@ -61,6 +61,14 @@ export function listPapers(): Paper[] {
   return rows.map((r) => toPaper(r, byPaper.get(r.id) ?? []));
 }
 
+// Lightweight id+title list for the duplicate-title check in the add-paper form
+// (avoids shipping every paper's full payload just to compare titles).
+export function listPaperTitles(): { id: number; title: string }[] {
+  return getDb()
+    .prepare("SELECT id, title FROM papers ORDER BY id DESC")
+    .all() as { id: number; title: string }[];
+}
+
 export function getPaperById(id: number): Paper | null {
   const db = getDb();
   const r = db.prepare("SELECT * FROM papers WHERE id = ?").get(id) as PaperRow | undefined;
