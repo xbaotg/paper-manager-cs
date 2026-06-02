@@ -11,6 +11,7 @@ import {
   getUserByUsername,
   createUser,
   setUserActive,
+  setUserAdmin,
   updateUserPassword,
   deleteUser,
   countActiveManagers,
@@ -46,6 +47,7 @@ export async function createUserAction(input: {
   role: Role;
   lecturerId: number | null;
   boMonId: number | null;
+  isAdmin?: boolean;
 }): Promise<ActionResult> {
   await requireManager();
 
@@ -74,6 +76,9 @@ export async function createUserAction(input: {
       role: input.role,
       lecturerId: input.role === "lecturer" ? input.lecturerId : null,
       boMonId: input.role === "head" ? input.boMonId : null,
+      // admin elevation only applies to lecturer accounts (managers are already
+      // admins; heads are a separate read-only role).
+      isAdmin: input.role === "lecturer" ? !!input.isAdmin : false,
     });
   } catch {
     return { ok: false, error: "Không tạo được tài khoản (giảng viên có thể đã được liên kết)." };
@@ -154,6 +159,21 @@ export async function setUserActiveAction(id: number, active: boolean): Promise<
   }
 
   setUserActive(id, active);
+  revalidatePath("/admin/users");
+  return { ok: true, data: snapshot() };
+}
+
+// Promote a lecturer to admin (or revoke). Only lecturer accounts are eligible:
+// managers are already admins, heads are a distinct role. The promoted lecturer
+// keeps their /me self-view and can switch between admin/user mode.
+export async function setUserAdminAction(id: number, isAdmin: boolean): Promise<ActionResult> {
+  await requireManager();
+  const target = getUserById(id);
+  if (!target) return { ok: false, error: "Tài khoản không tồn tại." };
+  if (target.role !== "lecturer") {
+    return { ok: false, error: "Chỉ có thể cấp quyền quản trị cho tài khoản giảng viên." };
+  }
+  setUserAdmin(id, isAdmin);
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }

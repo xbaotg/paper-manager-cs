@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS users (
   lecturer_id   INTEGER UNIQUE REFERENCES lecturers(id) ON DELETE SET NULL,
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-  bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL   -- scope for the 'head' (Trưởng bộ môn) role
+  bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL,  -- scope for the 'head' (Trưởng bộ môn) role
+  is_admin      INTEGER NOT NULL DEFAULT 0   -- elevated grant: a 'lecturer' with admin access who can switch admin/user view
 );
 
 CREATE TABLE IF NOT EXISTS venues (

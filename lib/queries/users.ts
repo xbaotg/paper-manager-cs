@@ -11,6 +11,7 @@ export interface UserRow {
   is_active: number;
   created_at: string;
   bo_mon_id: number | null;
+  is_admin: number;
 }
 
 // User joined with the linked lecturer's name, for the management list.
@@ -24,6 +25,7 @@ export interface UserListItem {
   createdAt: string;
   boMonId: number | null;
   boMonName: string | null;
+  isAdmin: number;
 }
 
 export function getUserByUsername(username: string): UserRow | undefined {
@@ -58,7 +60,7 @@ export function countActiveManagers(): number {
 export function listUsers(): UserListItem[] {
   const rows = getDb()
     .prepare(
-      `SELECT u.id, u.username, u.role, u.lecturer_id, u.is_active, u.created_at, u.bo_mon_id,
+      `SELECT u.id, u.username, u.role, u.lecturer_id, u.is_active, u.created_at, u.bo_mon_id, u.is_admin,
               l.name AS lecturer_name, b.name_vi AS bo_mon_name
        FROM users u
        LEFT JOIN lecturers l ON l.id = u.lecturer_id
@@ -76,6 +78,7 @@ export function listUsers(): UserListItem[] {
     createdAt: r.created_at,
     boMonId: r.bo_mon_id,
     boMonName: r.bo_mon_name,
+    isAdmin: r.is_admin,
   }));
 }
 
@@ -85,19 +88,25 @@ export interface CreateUserInput {
   role: Role;
   lecturerId: number | null;
   boMonId: number | null;
+  isAdmin?: boolean;
 }
 
 export function createUser(input: CreateUserInput): number {
   const info = getDb()
     .prepare(
-      "INSERT INTO users (username, password_hash, role, lecturer_id, bo_mon_id) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO users (username, password_hash, role, lecturer_id, bo_mon_id, is_admin) VALUES (?, ?, ?, ?, ?, ?)"
     )
-    .run(input.username, input.passwordHash, input.role, input.lecturerId, input.boMonId);
+    .run(input.username, input.passwordHash, input.role, input.lecturerId, input.boMonId, input.isAdmin ? 1 : 0);
   return Number(info.lastInsertRowid);
 }
 
 export function setUserActive(id: number, active: boolean): void {
   getDb().prepare("UPDATE users SET is_active = ? WHERE id = ?").run(active ? 1 : 0, id);
+}
+
+// Grant/revoke the admin elevation on a lecturer account.
+export function setUserAdmin(id: number, isAdmin: boolean): void {
+  getDb().prepare("UPDATE users SET is_admin = ? WHERE id = ?").run(isAdmin ? 1 : 0, id);
 }
 
 export function updateUserPassword(id: number, passwordHash: string): void {

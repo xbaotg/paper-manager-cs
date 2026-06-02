@@ -174,6 +174,16 @@ const MIGRATIONS: Migration[] = [
       db.exec(`DELETE FROM kpi_indicators WHERE code = 'paper_points'`);
     },
   },
+
+  // --- Admin grant for lecturers (promote-to-admin + admin/user view switch). ---
+  // A lecturer keeps role='lecturer' (and their self-view / KPI) but gains admin
+  // access via this flag; capability = role='manager' OR is_admin=1.
+  {
+    id: "0008_users_is_admin",
+    up: (db) => {
+      addColumnIfMissing(db, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

@@ -7,11 +7,16 @@ export type Role = "manager" | "lecturer" | "head";
 
 const ROLES: readonly Role[] = ["manager", "lecturer", "head"];
 
+// Active view for a dual-capable user (admin grant + own lecturer profile).
+// Stored in a separate cookie — a UI preference, not part of the identity token.
+export type ViewMode = "admin" | "user";
+
 export interface SessionPayload {
   userId: number;
   role: Role;
   lecturerId: number | null;
   boMonId: number | null; // scope for the 'head' role; null for manager/lecturer
+  isAdmin: boolean; // elevated grant on a non-manager (lecturer promoted to admin)
   [key: string]: unknown; // jose JWTPayload index signature
 }
 
@@ -44,10 +49,33 @@ export async function decryptSession(token: string | undefined): Promise<Session
       role: payload.role as Role,
       lecturerId: (payload.lecturerId as number | null) ?? null,
       boMonId: (payload.boMonId as number | null) ?? null,
+      isAdmin: payload.isAdmin === true,
     };
   } catch {
     return null;
   }
+}
+
+// Landing route for a user. Pure (no IO) so both proxy (cookie-only, optimistic)
+// and the DAL (DB-backed, authoritative) can call it. A dual-capable user
+// (admin grant + own lecturer profile) is routed by their active `mode`; a pure
+// manager has no self-view so always lands in /admin regardless of mode.
+export function homeFor(p: {
+  role: Role;
+  isAdmin: boolean;
+  lecturerId: number | null;
+  mode: ViewMode | null;
+}): string {
+  if (p.role === "head") return "/head";
+  const canAdmin = p.role === "manager" || p.isAdmin;
+  if (canAdmin) {
+    if (p.lecturerId != null && p.mode === "user") return "/me";
+    return "/admin";
+  }
+  // Plain lecturer (incl. one orphaned from its profile) → self-view. Never
+  // return "/login" for an authenticated user: proxy redirects /login back to
+  // home, so a "/login" home would loop.
+  return "/me";
 }
 
 // Cookie attributes shared by login/logout. Scoped to the app's basePath. Read
@@ -66,4 +94,12 @@ export function sessionCookieOptions() {
     path: COOKIE_PATH,
     maxAge: MAX_AGE_SECONDS,
   };
+}
+
+// Active-view preference for dual-capable users. Same attributes/scope as the
+// session cookie so the two never drift; cleared on logout.
+export const VIEW_MODE_COOKIE = "view_mode";
+
+export function viewModeCookieOptions() {
+  return sessionCookieOptions();
 }

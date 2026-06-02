@@ -1,12 +1,15 @@
 import { BookOpen, LogOut } from "lucide-react";
-import { requireLecturer } from "@/lib/dal";
+import { requireLecturer, isDualMode } from "@/lib/dal";
 import { logout } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { ChangePasswordDialog } from "@/app/_components/change-password-dialog";
+import { ViewModeSwitch } from "@/app/_components/view-mode-switch";
 
 // Auth gate for the lecturer (GV) self-service area.
 export default async function MeLayout({ children }: { children: React.ReactNode }) {
   const user = await requireLecturer();
+  // A lecturer promoted to admin can jump back into the admin area from here.
+  const canSwitchToAdmin = isDualMode(user);
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 flex items-center gap-3 h-16 px-6 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -15,6 +18,7 @@ export default async function MeLayout({ children }: { children: React.ReactNode
         </div>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground font-medium">{user.username}</span>
+        {canSwitchToAdmin && <ViewModeSwitch target="admin" />}
         <ChangePasswordDialog />
         <form action={logout}>
           <Button type="submit" variant="ghost" size="sm" className="cursor-pointer gap-1.5">

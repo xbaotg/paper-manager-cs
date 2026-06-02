@@ -5,16 +5,19 @@ import { Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminSidebar, type SidebarVariant } from "./admin-sidebar";
 import { ChangePasswordDialog } from "@/app/_components/change-password-dialog";
+import { ViewModeSwitch } from "@/app/_components/view-mode-switch";
 import { logout } from "@/app/actions/auth";
 
 export function AdminShell({
   username,
   children,
   variant = "admin",
+  canSwitchToUser = false,
 }: {
   username: string;
   children: React.ReactNode;
   variant?: SidebarVariant;
+  canSwitchToUser?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -55,6 +58,7 @@ export function AdminShell({
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15">
             <User className="size-3.5" /> {username}
           </span>
+          {canSwitchToUser && <ViewModeSwitch target="user" />}
           <ChangePasswordDialog />
           <form action={logout}>
             <Button type="submit" variant="ghost" size="sm" className="cursor-pointer gap-1.5">

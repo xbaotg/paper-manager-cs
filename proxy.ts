@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, decryptSession } from "@/lib/session";
+import {
+  SESSION_COOKIE,
+  VIEW_MODE_COOKIE,
+  decryptSession,
+  homeFor,
+  type ViewMode,
+} from "@/lib/session";
 
 // Optimistic edge gate: only checks the signed cookie (no DB). Authoritative
 // role/ownership checks live in layouts, the DAL, and every server action.
@@ -20,8 +26,15 @@ export async function proxy(request: NextRequest) {
 
   if (session && isLogin) {
     const url = request.nextUrl.clone();
-    url.pathname =
-      session.role === "manager" ? "/admin" : session.role === "head" ? "/head" : "/me";
+    const raw = request.cookies.get(VIEW_MODE_COOKIE)?.value;
+    const mode: ViewMode | null = raw === "admin" || raw === "user" ? raw : null;
+    // Optimistic (cookie-only) home; the DAL re-checks authoritatively.
+    url.pathname = homeFor({
+      role: session.role,
+      isAdmin: session.isAdmin,
+      lecturerId: session.lecturerId,
+      mode,
+    });
     return NextResponse.redirect(url);
   }
 

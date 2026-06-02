@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { UserPlus, KeyRound, Trash2, ShieldCheck, GraduationCap, Power, Building2, Sparkles, Copy } from "lucide-react";
+import { UserPlus, KeyRound, Trash2, ShieldCheck, ShieldPlus, ShieldMinus, GraduationCap, Power, Building2, Sparkles, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ import {
   createUserAction,
   resetPasswordAction,
   setUserActiveAction,
+  setUserAdminAction,
   deleteUserAction,
   generateLecturerAccountsAction,
   type UsersSnapshot,
@@ -66,6 +67,7 @@ export function UsersManager({
   const [role, setRole] = useState<Role>("lecturer");
   const [lecturerId, setLecturerId] = useState<string>("");
   const [boMonId, setBoMonId] = useState<string>("");
+  const [grantAdmin, setGrantAdmin] = useState(false);
 
   // reset password dialog
   const [resetTarget, setResetTarget] = useState<UserItem | null>(null);
@@ -91,6 +93,7 @@ export function UsersManager({
     setRole("lecturer");
     setLecturerId("");
     setBoMonId("");
+    setGrantAdmin(false);
   }
 
   function handleCreate() {
@@ -101,6 +104,7 @@ export function UsersManager({
         role,
         lecturerId: role === "lecturer" && lecturerId ? Number(lecturerId) : null,
         boMonId: role === "head" && boMonId ? Number(boMonId) : null,
+        isAdmin: role === "lecturer" && grantAdmin,
       });
       if (res.ok) {
         applySnapshot(res.data);
@@ -133,6 +137,18 @@ export function UsersManager({
       if (res.ok) {
         applySnapshot(res.data);
         toast.success(u.isActive ? "Đã vô hiệu hoá" : "Đã kích hoạt");
+      } else {
+        toast.error(res.error ?? "Có lỗi xảy ra");
+      }
+    });
+  }
+
+  function handleToggleAdmin(u: UserItem) {
+    startTransition(async () => {
+      const res = await setUserAdminAction(u.id, !u.isAdmin);
+      if (res.ok) {
+        applySnapshot(res.data);
+        toast.success(u.isAdmin ? "Đã thu hồi quyền quản trị" : "Đã cấp quyền quản trị");
       } else {
         toast.error(res.error ?? "Có lỗi xảy ra");
       }
@@ -216,9 +232,16 @@ export function UsersManager({
                       <Building2 className="size-3" /> Trưởng bộ môn
                     </Badge>
                   ) : (
-                    <Badge variant="secondary" className="gap-1">
-                      <GraduationCap className="size-3" /> Giảng viên
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge variant="secondary" className="gap-1">
+                        <GraduationCap className="size-3" /> Giảng viên
+                      </Badge>
+                      {!!u.isAdmin && (
+                        <Badge variant="default" className="gap-1">
+                          <ShieldCheck className="size-3" /> Quản trị
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
@@ -237,6 +260,22 @@ export function UsersManager({
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
+                    {u.role === "lecturer" && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title={u.isAdmin ? "Thu hồi quyền quản trị" : "Cấp quyền quản trị"}
+                        className="cursor-pointer"
+                        onClick={() => handleToggleAdmin(u)}
+                        disabled={pending}
+                      >
+                        {u.isAdmin ? (
+                          <ShieldMinus className="size-4 text-amber-600" />
+                        ) : (
+                          <ShieldPlus className="size-4" />
+                        )}
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -327,6 +366,19 @@ export function UsersManager({
                   </SelectContent>
                 </Select>
               </div>
+            )}
+            {role === "lecturer" && (
+              <label className="flex items-center gap-2.5 rounded-lg border p-3 cursor-pointer hover:bg-muted/50">
+                <input
+                  type="checkbox"
+                  checked={grantAdmin}
+                  onChange={(e) => setGrantAdmin(e.target.checked)}
+                  className="size-4 cursor-pointer accent-primary"
+                />
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <ShieldCheck className="size-4 text-primary" /> Cấp quyền quản trị
+                </span>
+              </label>
             )}
             {role === "head" && (
               <div className="space-y-1.5">
