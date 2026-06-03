@@ -6,13 +6,13 @@ services:
     image: paper-manager-cs
     container_name: paper-manager-cs
     ports:
-      # App is served under basePath (default "/kpi") -> http://HOST:3000/kpi
+      # App is served under basePath (default "/hub") -> http://HOST:3000/hub
       - "3000:3000"
     environment:
       NODE_ENV: production
       DATABASE_FILE: /app/data/app.db
       # URL prefix — must match `next.config.ts basePath` and the session-cookie path.
-      BASE_PATH: ${BASE_PATH:-/kpi}
+      BASE_PATH: ${BASE_PATH:-/hub}
       # Signing key for session cookies — REQUIRED. Set in .env.
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       # Bootstrap manager account, created on first boot if no users exist.
