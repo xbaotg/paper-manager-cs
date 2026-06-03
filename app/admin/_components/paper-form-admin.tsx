@@ -206,7 +206,15 @@ export function PaperFormAdmin({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next, details) => {
+        // Don't discard a half-filled form on an accidental backdrop click —
+        // only ESC, the X icon, or the Cancel button may close it.
+        if (!next && details?.reason === "outside-press") return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -277,7 +285,19 @@ export function PaperFormAdmin({
           {/* Venue picker */}
           <VenuePicker
             value={form.venue}
-            onChange={(venue) => setForm({ ...form, venue })}
+            onChange={(venue, venueObj) =>
+              setForm((f) => {
+                const next = { ...f, venue };
+                // Picking a Scopus-indexed venue defaults the Scopus status to
+                // "indexed" (index year = pub year), unless the user already set
+                // it. Mirrors the backfill rule in lib/migrate.ts.
+                if (venueObj?.scopusIndexed === 1 && f.scopusIndexStatus === "unknown") {
+                  next.scopusIndexStatus = "indexed";
+                  if (!f.scopusIndexYear && f.year) next.scopusIndexYear = f.year;
+                }
+                return next;
+              })
+            }
           />
 
           <div className="space-y-2">

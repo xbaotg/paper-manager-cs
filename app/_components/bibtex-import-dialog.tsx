@@ -187,7 +187,10 @@ export function BibtexImportDialog({
     onOpenChange(false);
   };
 
-  const handleOpenChange = (o: boolean) => {
+  const handleOpenChange = (o: boolean, details?: { reason?: string }) => {
+    // Keep the dialog open on accidental backdrop clicks — close only via ESC,
+    // the X icon, or an explicit button.
+    if (!o && details?.reason === "outside-press") return;
     if (!o) { // on close
       setBibtexStr("");
       setSearchQuery("");

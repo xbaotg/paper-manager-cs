@@ -512,7 +512,7 @@ export default function PapersPage() {
                         value={paper.submissionStatus ?? "submitted"}
                         onValueChange={(v) => handleStatusChange(paper, v as SubmissionStatus)}
                       >
-                        <SelectTrigger className="h-8 w-full cursor-pointer text-xs px-2 [&>span]:truncate" title="Đổi trạng thái">
+                        <SelectTrigger className="h-auto w-fit border-0 bg-transparent shadow-none rounded-md px-1 py-0.5 gap-1 cursor-pointer hover:bg-muted/60 focus-visible:ring-0 [&>svg]:size-3.5 [&>svg]:opacity-50" title="Đổi trạng thái">
                           <SubmissionStatusBadge status={paper.submissionStatus} className="text-[11px]" />
                         </SelectTrigger>
                         <SelectContent>
