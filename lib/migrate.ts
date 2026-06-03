@@ -1,5 +1,6 @@
 import "server-only";
 import type BetterSqlite3 from "better-sqlite3";
+import { backfillLecturerAvatars } from "./lecturer-avatars";
 
 // Ordered, idempotent schema migrations for EXISTING databases.
 //
@@ -220,6 +221,20 @@ const MIGRATIONS: Migration[] = [
         "UPDATE lecturers SET avatar_url = ? WHERE lower(email) = ? AND (avatar_url IS NULL OR avatar_url = '')"
       );
       for (const [email, url] of AVATARS) stmt.run(url, email.toLowerCase());
+    },
+  },
+
+  // --- Re-backfill avatars with name fallback. ---
+  // 0009 matched on email only, so production lecturers whose stored email
+  // differs from the scraped directory kept a NULL avatar — and 0009, once
+  // ledgered, never re-runs. This fills any still-empty avatar by email OR a
+  // diacritic-insensitive name match (shared logic in lib/lecturer-avatars.ts).
+  // Non-destructive: existing photos are left untouched.
+  {
+    id: "0010_lecturer_avatars_namematch",
+    up: (db) => {
+      addColumnIfMissing(db, "lecturers", "avatar_url", "avatar_url TEXT");
+      backfillLecturerAvatars(db);
     },
   },
 ];
