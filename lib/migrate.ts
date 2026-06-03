@@ -184,6 +184,44 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "users", "is_admin", "is_admin INTEGER NOT NULL DEFAULT 0");
     },
   },
+
+  // --- Lecturer profile photos. ---
+  // Adds lecturers.avatar_url and backfills it with portrait URLs scraped from
+  // the faculty directory (https://cs.uit.edu.vn/portfolio-teaches/), matched to
+  // each lecturer by their @uit.edu.vn email (stable across machines). Only fills
+  // rows whose avatar is still empty, so a manual override or a re-run never
+  // clobbers an existing photo. Lecturers absent from the directory keep NULL and
+  // the UI falls back to initials.
+  {
+    id: "0009_lecturer_avatars",
+    up: (db) => {
+      addColumnIfMissing(db, "lecturers", "avatar_url", "avatar_url TEXT");
+      const AVATARS: [string, string][] = [
+        ["chinhnt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00502-267x400.jpg"],
+        ["diemntn@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/DiemNTN-267x400.jpg"],
+        ["dungmt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00295-267x400.jpg"],
+        ["duyld@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/DuyLD-267x400.jpg"],
+        ["duyvnl@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00341-267x400.jpg"],
+        ["hangdv@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00419-267x400.jpg"],
+        ["hiennd@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/LD_00303-267x400.jpg"],
+        ["hoangln@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00323-267x400.jpg"],
+        ["khangtd@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00384-267x400.jpg"],
+        ["khiemltt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00392-267x400.jpg"],
+        ["kietnt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00361-267x400.jpg"],
+        ["thangcpd@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00310-267x400.jpg"],
+        ["thanhnd@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/LD_00508-267x400.jpg"],
+        ["thuonghtt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00412-267x400.jpg"],
+        ["thuyentd@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00372-267x400.jpg"],
+        ["tiendv@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2023/02/LD_00354-267x400.jpg"],
+        ["truonganpn@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/AnPNT-267x400.jpg"],
+        ["uyenptt@uit.edu.vn", "https://cs.uit.edu.vn/wp-content/uploads/2022/12/UyenPTT-267x400.jpg"],
+      ];
+      const stmt = db.prepare(
+        "UPDATE lecturers SET avatar_url = ? WHERE lower(email) = ? AND (avatar_url IS NULL OR avatar_url = '')"
+      );
+      for (const [email, url] of AVATARS) stmt.run(url, email.toLowerCase());
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Table,
   TableBody,
@@ -825,6 +825,7 @@ export default function AdminDashboard() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8 border border-primary/20 bg-primary/10 text-primary shrink-0">
+                            {lecturer.avatarUrl && <AvatarImage src={lecturer.avatarUrl} alt={lecturer.name} />}
                             <AvatarFallback className="text-xs font-semibold">
                               {lecturer.name.split(" ").pop()?.charAt(0) || "?"}
                             </AvatarFallback>

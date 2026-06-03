@@ -5,10 +5,10 @@ import { Navbar } from "@/app/_components/navbar";
 import { Footer } from "@/app/_components/footer";
 import { getDatabase } from "@/app/actions";
 import { Paper, Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
-import { getVenueRankBucket } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowUpRight, FileText, Search, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -147,6 +147,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                 <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent"></div>
                 <CardContent className="px-6 pb-6 pt-0 relative">
                   <Avatar className="h-24 w-24 border-4 border-background bg-primary/10 text-primary absolute -top-12">
+                    {lecturer.avatarUrl && <AvatarImage src={lecturer.avatarUrl} alt={lecturer.name} />}
                     <AvatarFallback className="text-3xl font-semibold">{lecturer.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="pt-14">
@@ -283,6 +284,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                       {sortedAndFilteredPapers.length > 0 ? (
                         sortedAndFilteredPapers.map((paper) => {
                           const rankBucket = paper.venue ? getVenueRankBucket(paper.venue) : "Khác";
+                          const venueRank = paper.venue ? getVenueRankShort(paper.venue) : "";
                           const isHighRank = rankBucket.includes("Cao");
 
                           return (
@@ -295,9 +297,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                                 </Link>
                                 <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2 flex-wrap">
                                   {paper.venue ? <span className="font-medium">{paper.venue}</span> : <i className="text-muted-foreground/60">Chưa rõ nơi đăng</i>}
-                                  {paper.venue && (
-                                    <Badge variant="outline" className={`text-[10px] py-0 px-1.5 font-medium ${isHighRank ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted/50 text-muted-foreground'}`}>
-                                      {rankBucket.split(" ")[0]}
+                                  {venueRank && (
+                                    <Badge variant="outline" title={rankBucket} className={`text-[10px] py-0 px-1.5 font-medium ${isHighRank ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted/50 text-muted-foreground'}`}>
+                                      {venueRank}
                                     </Badge>
                                   )}
                                 </p>

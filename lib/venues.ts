@@ -5746,6 +5746,14 @@ export function getVenueRankBucket(venueCode: string): RankBucket {
   return "Chưa phân loại";
 }
 
+// The venue's actual rank string for a compact badge ("A*", "A", "Q1", "B"...).
+// Empty when the venue is unknown or unranked, so callers can hide the badge
+// instead of rendering the old ambiguous first-word-of-bucket ("Hạng"/"Chưa").
+export function getVenueRankShort(venueCode: string): string {
+  const vn = getVenueByCode(venueCode);
+  return (vn?.rank ?? "").trim();
+}
+
 // Q1 specifically (the dept's 30% / 17-paper target keys on Q1, not the broad
 // "Hạng Cao" bucket which also covers A*/A conferences).
 export function isVenueQ1(venueCode: string): boolean {

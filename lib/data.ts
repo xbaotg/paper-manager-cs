@@ -16,6 +16,7 @@ export interface Lecturer {
   phone?: string;
   academicRank?: AcademicRank;
   boMonId?: number | null;
+  avatarUrl?: string | null; // profile photo URL (scraped from the faculty site); null -> initials fallback
 }
 
 export const ACADEMIC_RANK_LABELS: Record<AcademicRank, string> = {

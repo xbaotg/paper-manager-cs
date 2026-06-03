@@ -11,6 +11,7 @@ interface LecturerRow {
   phone: string | null;
   academic_rank: string | null;
   bo_mon_id: number | null;
+  avatar_url: string | null;
 }
 
 function toLecturer(r: LecturerRow): Lecturer {
@@ -23,6 +24,7 @@ function toLecturer(r: LecturerRow): Lecturer {
     ...(r.phone ? { phone: r.phone } : {}),
     academicRank: (r.academic_rank as AcademicRank | null) ?? academicRankFromTitle(r.title),
     boMonId: r.bo_mon_id,
+    avatarUrl: r.avatar_url,
   };
 }
 
@@ -41,7 +43,7 @@ export function getLecturerById(id: number): Lecturer | null {
 export function createLecturer(l: Lecturer): void {
   getDb()
     .prepare(
-      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       l.id,
@@ -51,14 +53,17 @@ export function createLecturer(l: Lecturer): void {
       l.department,
       l.phone ?? null,
       l.academicRank ?? academicRankFromTitle(l.title),
-      l.boMonId ?? null
+      l.boMonId ?? null,
+      l.avatarUrl ?? null
     );
 }
 
 export function updateLecturer(id: number, l: Lecturer): void {
   getDb()
     .prepare(
-      "UPDATE lecturers SET name = ?, email = ?, title = ?, department = ?, phone = ?, academic_rank = ?, bo_mon_id = ? WHERE id = ?"
+      // avatar_url via COALESCE: the lecturer edit form does not carry it, so a
+      // null arg preserves the photo backfilled by migration instead of wiping it.
+      "UPDATE lecturers SET name = ?, email = ?, title = ?, department = ?, phone = ?, academic_rank = ?, bo_mon_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?"
     )
     .run(
       l.name,
@@ -68,6 +73,7 @@ export function updateLecturer(id: number, l: Lecturer): void {
       l.phone ?? null,
       l.academicRank ?? academicRankFromTitle(l.title),
       l.boMonId ?? null,
+      l.avatarUrl ?? null,
       id
     );
 }

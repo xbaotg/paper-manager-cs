@@ -9,7 +9,7 @@ import { Paper, Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function LecturersPage() {
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -89,6 +89,7 @@ export default function LecturersPage() {
               <Card className="flex flex-col h-full border-muted bg-card hover:border-primary/50 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all pt-4 cursor-pointer">
                 <CardHeader className="flex flex-row items-center gap-4 pb-4 px-6 pt-2">
                   <Avatar className="h-14 w-14 border border-primary/20 bg-primary/10 text-primary">
+                    {lecturer.avatarUrl && <AvatarImage src={lecturer.avatarUrl} alt={lecturer.name} />}
                     <AvatarFallback className="font-semibold text-lg group-hover:scale-110 transition-transform">
                       {lecturer.name.split(' ').pop()?.charAt(0) || '?'}
                     </AvatarFallback>

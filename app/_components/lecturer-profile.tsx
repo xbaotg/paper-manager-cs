@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { getVenueRankBucket } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
 import { LECTURER_TITLE_LABELS, ACADEMIC_RANK_LABELS } from "@/lib/data";
 import type { LecturerProfile } from "@/lib/profile";
 import type { DevelopmentStatus } from "@/lib/queries/development";
@@ -167,6 +167,7 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
               )}
               {papers.map((p) => {
                 const bucket = p.venue ? getVenueRankBucket(p.venue) : "Khác";
+                const venueRank = p.venue ? getVenueRankShort(p.venue) : "";
                 return (
                   <TableRow key={p.id}>
                     <TableCell className="align-top font-medium pt-4">{p.year}</TableCell>
@@ -177,7 +178,7 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
                       </Link>
                       <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
                         {p.venue ? <span>{p.venue}</span> : <i>Chưa rõ nơi đăng</i>}
-                        {p.venue && <Badge variant="outline" className="text-[10px]">{bucket.split(" ")[0]}</Badge>}
+                        {venueRank && <Badge variant="outline" className="text-[10px]" title={bucket}>{venueRank}</Badge>}
                         {p.scopusIndexStatus === "indexed" && <Badge variant="outline" className="text-[10px] text-green-600 border-green-600/40">Scopus {p.scopusIndexYear ?? ""}</Badge>}
                         {p.credited && <Badge variant="outline" className="text-[10px] text-primary border-primary/40">Được tính KPI</Badge>}
                       </div>

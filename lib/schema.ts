@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS lecturers (
   department    TEXT NOT NULL,
   phone         TEXT,
   academic_rank TEXT NOT NULL DEFAULT 'ThS',          -- PGS.TS | TS | NCS | ThS | CN (normalized for KPI logic)
-  bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL
+  bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL,
+  avatar_url    TEXT                                    -- profile photo URL; NULL -> UI shows initials
 );
 
 CREATE TABLE IF NOT EXISTS papers (

@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { updatePaperServer, deletePaperServer, updateCreditedAuthorServer } from "@/app/actions";
-import { getVenueRankBucket } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
 import type { Paper, Lecturer } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
@@ -51,6 +51,7 @@ export function PaperManage({
   const [pending, startTransition] = useTransition();
 
   const bucket = paper.venue ? getVenueRankBucket(paper.venue) : "Khác";
+  const venueRank = paper.venue ? getVenueRankShort(paper.venue) : "";
   const lecturerById = new Map(lecturers.map((l) => [l.id, l]));
   const credited = paper.creditedLecturerId != null ? lecturerById.get(paper.creditedLecturerId) : null;
   const internal = (paper.lecturerIds ?? []).map((id) => lecturerById.get(id)).filter(Boolean) as Lecturer[];
@@ -118,7 +119,7 @@ export function PaperManage({
               <SubmissionStatusBadge status={paper.submissionStatus} />
               <Badge variant="secondary" className="gap-1"><CalendarDays className="size-3" /> {paper.year}</Badge>
               {paper.venue && <Badge variant="outline">{paper.venue}</Badge>}
-              {paper.venue && <Badge variant="outline">{bucket.split(" ")[0]}</Badge>}
+              {venueRank && <Badge variant="outline" title={bucket}>{venueRank}</Badge>}
               {paper.scopusIndexStatus === "indexed" && (
                 <Badge variant="outline" className="text-green-600 border-green-600/40">Scopus {paper.scopusIndexYear ?? ""}</Badge>
               )}
@@ -159,7 +160,7 @@ export function PaperManage({
               )}
             </Field>
             <Field label="Tình trạng Scopus">{STATUS_LABEL[paper.scopusIndexStatus ?? "unknown"]}</Field>
-            <Field label="Xếp hạng">{paper.quartile || (paper.venue ? bucket.split(" ")[0] : "—")}</Field>
+            <Field label="Xếp hạng">{paper.quartile || venueRank || "—"}</Field>
             {paper.doi && (
               <Field label="DOI">
                 <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">{paper.doi} <ExternalLink className="size-3" /></a>
