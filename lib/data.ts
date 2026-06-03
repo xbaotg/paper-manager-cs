@@ -72,6 +72,7 @@ export type ScopusIndexStatus = "unknown" | "accepted" | "indexed";
 export type SubmissionStatus =
   | "submitted"      // sent, waiting
   | "under_review"   // peer review
+  | "rebuttal"       // rebuttal / author response phase
   | "accepted"       // accepted, not yet published
   | "denied"         // rejected
   | "published";     // published / appeared
@@ -79,10 +80,29 @@ export type SubmissionStatus =
 export const SUBMISSION_STATUS_LABEL: Record<SubmissionStatus, string> = {
   submitted: "Đã gửi (chờ kết quả)",
   under_review: "Đang phản biện",
+  rebuttal: "Phản hồi phản biện (rebuttal)",
   accepted: "Chấp nhận",
   denied: "Từ chối",
   published: "Đã xuất bản",
 };
+
+// Outline/border classes for the status badge, shared across every list/detail view.
+export const SUBMISSION_STATUS_BADGE_CLASS: Record<SubmissionStatus, string> = {
+  submitted: "text-slate-600 border-slate-400/50",
+  under_review: "text-amber-600 border-amber-600/40",
+  rebuttal: "text-orange-600 border-orange-600/40",
+  accepted: "text-blue-600 border-blue-600/40",
+  denied: "text-destructive border-destructive/40",
+  published: "text-green-600 border-green-600/40",
+};
+
+// "Un-accepted" papers still moving through review — the ones that need follow-up.
+// Excludes the terminal states (accepted / published / denied).
+export const PENDING_SUBMISSION_STATUSES: SubmissionStatus[] = ["submitted", "under_review", "rebuttal"];
+
+export function isPendingSubmission(s: SubmissionStatus | undefined | null): boolean {
+  return PENDING_SUBMISSION_STATUSES.includes((s ?? "submitted") as SubmissionStatus);
+}
 
 export interface Paper {
   id: number;

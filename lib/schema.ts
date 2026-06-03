@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS papers (
   scopus_index_status      TEXT NOT NULL DEFAULT 'unknown', -- unknown | accepted | indexed
   scopus_index_year        INTEGER,                         -- counting year for Scopus KPIs (NOT publication year)
   quartile                 TEXT,                            -- Q1..Q4 snapshot at index time; NULL -> fall back to venue rank
-  submission_status        TEXT NOT NULL DEFAULT 'submitted' -- submitted | under_review | accepted | denied | published
+  submission_status        TEXT NOT NULL DEFAULT 'submitted' -- submitted | under_review | rebuttal | accepted | denied | published
 );
 
 CREATE TABLE IF NOT EXISTS paper_lecturers (

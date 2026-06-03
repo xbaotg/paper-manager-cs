@@ -17,16 +17,8 @@ import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { updatePaperServer, deletePaperServer, updateCreditedAuthorServer } from "@/app/actions";
 import { getVenueRankBucket } from "@/lib/venues";
-import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
-import { SUBMISSION_STATUS_LABEL } from "@/lib/data";
-
-const SUBMISSION_BADGE_CLASS: Record<SubmissionStatus, string> = {
-  submitted: "text-muted-foreground",
-  under_review: "text-amber-600 border-amber-600/40",
-  accepted: "text-blue-600 border-blue-600/40",
-  denied: "text-destructive border-destructive/40",
-  published: "text-green-600 border-green-600/40",
-};
+import type { Paper, Lecturer } from "@/lib/data";
+import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
 const STATUS_LABEL: Record<string, string> = {
   unknown: "Chưa rõ",
@@ -123,9 +115,7 @@ export function PaperManage({
           <div className="space-y-3">
             <h1 className="text-2xl font-semibold font-heading tracking-tight leading-snug">{paper.title}</h1>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className={SUBMISSION_BADGE_CLASS[paper.submissionStatus ?? "submitted"]}>
-                {SUBMISSION_STATUS_LABEL[paper.submissionStatus ?? "submitted"]}
-              </Badge>
+              <SubmissionStatusBadge status={paper.submissionStatus} />
               <Badge variant="secondary" className="gap-1"><CalendarDays className="size-3" /> {paper.year}</Badge>
               {paper.venue && <Badge variant="outline">{paper.venue}</Badge>}
               {paper.venue && <Badge variant="outline">{bucket.split(" ")[0]}</Badge>}

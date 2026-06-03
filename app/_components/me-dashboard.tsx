@@ -26,7 +26,14 @@ import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { addPaperServer, updatePaperServer, deletePaperServer } from "@/app/actions";
 import { getVenueRankBucket } from "@/lib/venues";
-import type { Paper, Lecturer } from "@/lib/data";
+import {
+  type Paper,
+  type Lecturer,
+  type SubmissionStatus,
+  SUBMISSION_STATUS_LABEL,
+  isPendingSubmission,
+} from "@/lib/data";
+import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
 export function MeDashboard({
   lecturerId,
@@ -45,6 +52,7 @@ export function MeDashboard({
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
   const [filterStartYear, setFilterStartYear] = useState<string>("all");
   const [filterEndYear, setFilterEndYear] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all"); // "all" | "pending" | <SubmissionStatus>
   const [yearSortDir, setYearSortDir] = useState<"asc" | "desc">("desc");
   const [, startTransition] = useTransition();
 
@@ -58,6 +66,8 @@ export function MeDashboard({
     const list = papers.filter((p) => {
       if (filterStartYear !== "all" && p.year < parseInt(filterStartYear, 10)) return false;
       if (filterEndYear !== "all" && p.year > parseInt(filterEndYear, 10)) return false;
+      if (filterStatus === "pending" && !isPendingSubmission(p.submissionStatus)) return false;
+      if (filterStatus !== "all" && filterStatus !== "pending" && (p.submissionStatus ?? "submitted") !== filterStatus) return false;
       return true;
     });
     list.sort((a, b) => {
@@ -65,9 +75,9 @@ export function MeDashboard({
       return (yearSortDir === "desc" ? -cmp : cmp) || b.id - a.id;
     });
     return list;
-  }, [papers, filterStartYear, filterEndYear, yearSortDir]);
+  }, [papers, filterStartYear, filterEndYear, filterStatus, yearSortDir]);
 
-  const hasFilters = filterStartYear !== "all" || filterEndYear !== "all";
+  const hasFilters = filterStartYear !== "all" || filterEndYear !== "all" || filterStatus !== "all";
 
   // Keep only this lecturer's papers from a full DB snapshot.
   function mine(all: Paper[]): Paper[] {
@@ -163,11 +173,31 @@ export function MeDashboard({
           </SelectContent>
         </Select>
 
+        <div className="text-sm font-semibold text-muted-foreground ml-2 mr-1">TRẠNG THÁI:</div>
+        <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v || "all")}>
+          <SelectTrigger className="w-[200px] h-9">
+            <span className="truncate text-sm">
+              {filterStatus === "all"
+                ? "Tất cả trạng thái"
+                : filterStatus === "pending"
+                  ? "Chưa chấp nhận (đang xử lý)"
+                  : SUBMISSION_STATUS_LABEL[filterStatus as SubmissionStatus]}
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="pending" className="font-medium text-amber-600">Chưa chấp nhận (đang xử lý)</SelectItem>
+            {(Object.keys(SUBMISSION_STATUS_LABEL) as SubmissionStatus[]).map((s) => (
+              <SelectItem key={s} value={s}>{SUBMISSION_STATUS_LABEL[s]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         {hasFilters && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setFilterStartYear("all"); setFilterEndYear("all"); }}
+            onClick={() => { setFilterStartYear("all"); setFilterEndYear("all"); setFilterStatus("all"); }}
             className="text-muted-foreground hover:text-destructive h-9"
           >
             <FilterX className="size-4 mr-2" /> Xóa lọc
@@ -192,6 +222,7 @@ export function MeDashboard({
                 </button>
               </TableHead>
               <TableHead className="w-28">Nơi đăng</TableHead>
+              <TableHead className="w-40">Trạng thái</TableHead>
               <TableHead className="w-24 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
@@ -205,6 +236,9 @@ export function MeDashboard({
                 <TableCell>{p.year}</TableCell>
                 <TableCell>
                   <Badge variant="outline" title={getVenueRankBucket(p.venue)}>{p.venue}</Badge>
+                </TableCell>
+                <TableCell>
+                  <SubmissionStatusBadge status={p.submissionStatus} />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -228,7 +262,7 @@ export function MeDashboard({
             ))}
             {filteredPapers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                   {papers.length === 0
                     ? "Chưa có bài báo nào. Nhấn “Thêm bài báo” để bắt đầu."
                     : "Không có bài báo nào trong phạm vi năm đã chọn."}

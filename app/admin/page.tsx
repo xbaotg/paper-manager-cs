@@ -47,9 +47,10 @@ import {
   FacultyKpiBars, LecturerKpiBars,
 } from "./_components/analytics-charts";
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
-import { type Paper, type Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
+import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission } from "@/lib/data";
 import { getVenueRankBucket, isVenueQ1 } from "@/lib/venues";
 import { getDatabase } from "@/app/actions";
+import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -473,7 +474,7 @@ export default function AdminDashboard() {
           if (p.scopusIndexStatus !== "indexed") return false;
           return p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
         }).length;
-        const pending = filteredPapers.filter((p) => p.submissionStatus === "submitted" || p.submissionStatus === "under_review").length;
+        const pending = filteredPapers.filter((p) => isPendingSubmission(p.submissionStatus)).length;
         const accepted = filteredPapers.filter((p) => p.submissionStatus === "accepted" || p.submissionStatus === "published").length;
         const denied = filteredPapers.filter((p) => p.submissionStatus === "denied").length;
         const decisions = accepted + denied;
@@ -483,7 +484,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`${filteredPapers.length} bài tổng`} accentClass="text-blue-500 bg-blue-500/10" />
               <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Theo dữ liệu paper" accentClass="text-emerald-500 bg-emerald-500/10" />
-              <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Submitted + Đang phản biện" accentClass="text-amber-500 bg-amber-500/10" />
+              <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Chưa chấp nhận (đã gửi/phản biện/rebuttal)" accentClass="text-amber-500 bg-amber-500/10" />
               <StatsCard icon={Users} label="Tỷ lệ chấp nhận" value={acceptRate == null ? "—" : `${acceptRate}%`} subtext={`${accepted} chấp nhận / ${denied} từ chối`} accentClass="text-indigo-500 bg-indigo-500/10" />
             </div>
 
@@ -635,11 +636,12 @@ export default function AdminDashboard() {
                  <div key={paper.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                    <div className="flex-1 min-w-0">
                      <Link href={`/papers/${paper.id}`} className="text-sm font-medium leading-snug line-clamp-2 hover:text-primary hover:underline">{paper.title}</Link>
-                     <div className="flex items-center gap-2 mt-1.5">
+                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                        <Badge variant="outline" className="bg-primary/5 text-primary text-xs">
                          {paper.venue}
                        </Badge>
                        <span className="text-xs text-muted-foreground">{paper.year}</span>
+                       <SubmissionStatusBadge status={paper.submissionStatus} className="text-xs" />
                      </div>
                    </div>
                  </div>

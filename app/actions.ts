@@ -1,12 +1,12 @@
 "use server";
 
 import { readDatabase, type DatabaseSchema } from "@/lib/db";
-import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, getPaperById, listPaperTitles } from "@/lib/queries/papers";
+import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager } from "@/lib/dal";
-import type { Paper, Lecturer } from "@/lib/data";
+import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import type { Venue } from "@/lib/venues";
 
 // Read-only snapshot — public (the home page + lecturer directory are public).
@@ -107,6 +107,24 @@ export async function updateCreditedAuthorServer(
   }
 
   updateCreditedLecturer(paperId, lecturerId);
+  return readDatabase();
+}
+
+// Quick submission-status change from the list view (manage un-accepted papers
+// without opening the full editor). Manager or any internal author of the paper.
+export async function updatePaperStatusServer(
+  paperId: number,
+  status: SubmissionStatus
+): Promise<DatabaseSchema> {
+  const user = await requireAuth();
+  const paper = getPaperById(paperId);
+  if (!paper) throw new Error("Bài báo không tồn tại.");
+  if (user.role === "lecturer") {
+    if (!user.lecturerId || !paper.lecturerIds.includes(user.lecturerId)) {
+      throw new Error("Bạn chỉ có thể chỉnh sửa bài báo của mình.");
+    }
+  }
+  updatePaperSubmissionStatus(paperId, status);
   return readDatabase();
 }
 

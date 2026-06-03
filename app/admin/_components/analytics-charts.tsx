@@ -25,6 +25,7 @@ const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#64748b", "#8b5cf6", "#ec4899"
 const SUBMISSION_COLORS: Record<SubmissionStatus, string> = {
   submitted: "#64748b",     // slate (waiting)
   under_review: "#f59e0b",  // amber
+  rebuttal: "#fb923c",      // orange
   accepted: "#3b89ff",      // blue
   denied: "#ee1d36",        // red
   published: "#00d722",     // green
@@ -210,7 +211,7 @@ export function VenueTypePieChart({ papers }: ChartProps) {
 export function SubmissionStatusPie({ papers }: ChartProps) {
   const data = useMemo(() => {
     const counts: Record<SubmissionStatus, number> = {
-      submitted: 0, under_review: 0, accepted: 0, denied: 0, published: 0,
+      submitted: 0, under_review: 0, rebuttal: 0, accepted: 0, denied: 0, published: 0,
     };
     papers.forEach((p) => { counts[p.submissionStatus ?? "submitted"] += 1; });
     return (Object.keys(counts) as SubmissionStatus[])

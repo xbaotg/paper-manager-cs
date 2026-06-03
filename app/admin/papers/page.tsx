@@ -46,8 +46,15 @@ import { toast } from "sonner";
 import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
 import { PaperFormAdmin } from "../_components/paper-form-admin";
 import { ConfirmDialog } from "../_components/confirm-dialog";
-import { type Paper, type Lecturer } from "@/lib/data";
-import { getDatabase, addPaperServer, updatePaperServer, deletePaperServer } from "@/app/actions";
+import {
+  type Paper,
+  type Lecturer,
+  type SubmissionStatus,
+  SUBMISSION_STATUS_LABEL,
+  isPendingSubmission,
+} from "@/lib/data";
+import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
+import { getDatabase, addPaperServer, updatePaperServer, deletePaperServer, updatePaperStatusServer } from "@/app/actions";
 
 const ITEMS_PER_PAGE = 8;
 
@@ -60,6 +67,7 @@ export default function PapersPage() {
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterLecturer, setFilterLecturer] = useState<number | null>(null);
   const [filterVenue, setFilterVenue] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all"); // "all" | "pending" | <SubmissionStatus>
   const [yearSortDir, setYearSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
@@ -134,6 +142,13 @@ export default function PapersPage() {
       result = result.filter((p) => p.venue === filterVenue);
     }
 
+    // Submission-status filter ("pending" = the un-accepted, still-in-review group)
+    if (filterStatus === "pending") {
+      result = result.filter((p) => isPendingSubmission(p.submissionStatus));
+    } else if (filterStatus !== "all") {
+      result = result.filter((p) => (p.submissionStatus ?? "submitted") === filterStatus);
+    }
+
     // Sort by year (direction toggled via the "Năm" column header), newest id as tiebreak
     result.sort((a, b) => {
       const cmp = a.year - b.year;
@@ -141,7 +156,7 @@ export default function PapersPage() {
     });
 
     return result;
-  }, [papers, search, filterYear, filterLecturer, filterVenue, yearSortDir]);
+  }, [papers, search, filterYear, filterLecturer, filterVenue, filterStatus, yearSortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -149,15 +164,27 @@ export default function PapersPage() {
   const pageItems = filtered.slice(start, start + ITEMS_PER_PAGE);
 
   const hasFilters =
-    filterYear !== "all" || filterLecturer !== null || filterVenue !== "all";
+    filterYear !== "all" || filterLecturer !== null || filterVenue !== "all" || filterStatus !== "all";
 
   function clearFilters() {
     setFilterYear("all");
     setFilterLecturer(null);
     setFilterVenue("all");
+    setFilterStatus("all");
     setSearch("");
     setPage(1);
     setSelectedIds(new Set());
+  }
+
+  async function handleStatusChange(paper: Paper, status: SubmissionStatus) {
+    if ((paper.submissionStatus ?? "submitted") === status) return;
+    try {
+      const db = await updatePaperStatusServer(paper.id, status);
+      setPapers(db.papers);
+      toast.success("Đã cập nhật trạng thái");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Không cập nhật được trạng thái");
+    }
   }
 
   async function handleSave(paper: Paper) {
@@ -323,6 +350,31 @@ export default function PapersPage() {
             </SelectContent>
           </Select>
 
+          <Select
+            value={filterStatus}
+            onValueChange={(v) => {
+              setFilterStatus(v ?? "all");
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-[180px] h-10 cursor-pointer">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="cursor-pointer">
+                Tất cả trạng thái
+              </SelectItem>
+              <SelectItem value="pending" className="cursor-pointer font-medium text-amber-600">
+                Chưa chấp nhận (đang xử lý)
+              </SelectItem>
+              {(Object.keys(SUBMISSION_STATUS_LABEL) as SubmissionStatus[]).map((s) => (
+                <SelectItem key={s} value={s} className="cursor-pointer">
+                  {SUBMISSION_STATUS_LABEL[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {hasFilters && (
             <Button
               variant="ghost"
@@ -359,7 +411,7 @@ export default function PapersPage() {
                     }}
                   />
                 </TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[36%]">
+                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[28%]">
                   Tên bài báo
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 text-center w-[8%]">
@@ -373,10 +425,13 @@ export default function PapersPage() {
                     {yearSortDir === "desc" ? <ArrowDown className="size-3.5" /> : <ArrowUp className="size-3.5" />}
                   </button>
                 </TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[10%]">
+                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[9%]">
                   Hội nghị
                 </TableHead>
-                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[28%]">
+                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[15%]">
+                  Trạng thái
+                </TableHead>
+                <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 w-[22%]">
                   Giảng viên
                 </TableHead>
                 <TableHead className="font-semibold text-xs uppercase tracking-wider py-4 text-right w-[14%]">
@@ -388,7 +443,7 @@ export default function PapersPage() {
               {pageItems.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="h-32 text-center text-muted-foreground"
                   >
                     <FileText className="size-8 text-primary/20 mx-auto mb-2" />
@@ -451,6 +506,23 @@ export default function PapersPage() {
                       >
                         {paper.venue}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="py-4 whitespace-normal">
+                      <Select
+                        value={paper.submissionStatus ?? "submitted"}
+                        onValueChange={(v) => handleStatusChange(paper, v as SubmissionStatus)}
+                      >
+                        <SelectTrigger className="h-8 w-full cursor-pointer text-xs px-2 [&>span]:truncate" title="Đổi trạng thái">
+                          <SubmissionStatusBadge status={paper.submissionStatus} className="text-[11px]" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(SUBMISSION_STATUS_LABEL) as SubmissionStatus[]).map((s) => (
+                            <SelectItem key={s} value={s} className="cursor-pointer text-xs">
+                              {SUBMISSION_STATUS_LABEL[s]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell className="py-4 whitespace-normal">
                       <div className="flex flex-wrap gap-1">

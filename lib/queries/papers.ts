@@ -173,6 +173,12 @@ export function updatePaper(id: number, p: Paper): void {
   })();
 }
 
+// Quick submission-status change — used by the inline status select in the
+// paper list (manage un-accepted papers without opening the full form).
+export function updatePaperSubmissionStatus(paperId: number, status: string): void {
+  getDb().prepare("UPDATE papers SET submission_status = ? WHERE id = ?").run(status, paperId);
+}
+
 // Quick credit reassignment — used by the inline "Người được tính KPI" select.
 // The caller must already have validated the lecturer belongs to the paper.
 export function updateCreditedLecturer(paperId: number, lecturerId: number | null): void {
