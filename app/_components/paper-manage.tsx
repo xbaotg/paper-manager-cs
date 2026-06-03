@@ -116,7 +116,8 @@ export function PaperManage({
           <div className="space-y-3">
             <h1 className="text-2xl font-semibold font-heading tracking-tight leading-snug">{paper.title}</h1>
             <div className="flex flex-wrap items-center gap-2">
-              <SubmissionStatusBadge status={paper.submissionStatus} />
+              {/* status omitted when redacted for non-privileged viewers (rejected papers) */}
+              {paper.submissionStatus && <SubmissionStatusBadge status={paper.submissionStatus} />}
               <Badge variant="secondary" className="gap-1"><CalendarDays className="size-3" /> {paper.year}</Badge>
               {paper.venue && <Badge variant="outline">{paper.venue}</Badge>}
               {venueRank && <Badge variant="outline" title={bucket}>{venueRank}</Badge>}

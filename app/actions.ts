@@ -5,13 +5,28 @@ import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLec
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode } from "@/lib/queries/venues";
-import { getCurrentUser, requireManager } from "@/lib/dal";
+import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import type { Venue } from "@/lib/venues";
 
 // Read-only snapshot — public (the home page + lecturer directory are public).
+// Rejected ("denied") papers are private: only admins/head and the paper's own
+// author may see them. They are dropped here for everyone else so the rejected
+// status never reaches a public client (UI hiding alone would still ship it in
+// the payload). Other in-progress statuses (submitted/under_review/rebuttal/
+// accepted) stay visible.
 export async function getDatabase(): Promise<DatabaseSchema> {
-  return readDatabase();
+  const db = readDatabase();
+  const user = await getCurrentUser();
+  const canSeeAll = !!user && (canManage(user) || user.role === "head");
+  if (canSeeAll) return db;
+  const myLecturerId = user?.lecturerId ?? null;
+  const papers = db.papers.filter(
+    (p) =>
+      p.submissionStatus !== "denied" ||
+      (myLecturerId != null && p.lecturerIds.includes(myLecturerId))
+  );
+  return { ...db, papers };
 }
 
 async function requireAuth() {

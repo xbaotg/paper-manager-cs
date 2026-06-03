@@ -105,6 +105,22 @@ export function isPendingSubmission(s: SubmissionStatus | undefined | null): boo
   return PENDING_SUBMISSION_STATUSES.includes((s ?? "submitted") as SubmissionStatus);
 }
 
+// A paper counts toward a lecturer's publication TOTAL (profile headline,
+// rank distribution, per-year chart) only once it is accepted (in-press) or
+// published. The in-progress pipeline (submitted/under_review/rebuttal) and
+// rejected (denied) papers are excluded and flagged as "not published" in lists.
+export const PUBLICATION_COUNTED_STATUSES: SubmissionStatus[] = ["accepted", "published"];
+
+export function countsAsPublication(s: SubmissionStatus | undefined | null): boolean {
+  return PUBLICATION_COUNTED_STATUSES.includes((s ?? "submitted") as SubmissionStatus);
+}
+
+// True when a paper is not yet publicly published (anything other than the
+// terminal "published" state) — drives the "chưa xuất bản" tag in lists.
+export function isUnpublished(s: SubmissionStatus | undefined | null): boolean {
+  return (s ?? "submitted") !== "published";
+}
+
 export interface Paper {
   id: number;
   title: string;

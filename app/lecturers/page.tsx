@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Navbar } from "@/app/_components/navbar";
 import { Footer } from "@/app/_components/footer";
 import { getDatabase } from "@/app/actions";
-import { Paper, Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
+import { Paper, Lecturer, LECTURER_TITLE_LABELS, countsAsPublication } from "@/lib/data";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -25,11 +25,15 @@ export default function LecturersPage() {
     }).catch(console.error);
   }, []);
 
-  // Compute stats per lecturer
+  // Compute stats per lecturer. Only published / accepted (in-press) papers
+  // count toward the headline total and per-year breakdown — matches the
+  // lecturer profile; the in-progress/denied pipeline is excluded.
   const lecturerStats = useMemo(() => {
     return lecturers.map(lecturer => {
-      const lecturerPapers = papers.filter(p => p.lecturerIds?.includes(lecturer.id));
-      
+      const lecturerPapers = papers.filter(
+        p => p.lecturerIds?.includes(lecturer.id) && countsAsPublication(p.submissionStatus)
+      );
+
       const papersByYear = lecturerPapers.reduce((acc, p) => {
         acc[p.year] = (acc[p.year] || 0) + 1;
         return acc;

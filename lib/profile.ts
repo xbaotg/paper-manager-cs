@@ -1,5 +1,5 @@
 import "server-only";
-import type { Lecturer, Paper, AcademicRank } from "./data";
+import { countsAsPublication, type Lecturer, type Paper, type AcademicRank } from "./data";
 import type { Role } from "./session";
 import {
   computeKpiRow,
@@ -37,7 +37,8 @@ export interface LecturerProfile {
   account: { username: string; role: Role; isActive: boolean } | null;
   papers: ProfilePaper[];
   stats: {
-    total: number;
+    total: number;   // published + accepted (in-press) only
+    pending: number; // submitted/under_review/rebuttal/denied — excluded from total
     scopusIndexed: number;
     q1: number;
     byYear: Record<number, number>;
@@ -63,15 +64,21 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
   const own = getPapersByLecturer(id);
   const papers: ProfilePaper[] = own.map((p) => ({ ...p, credited: isCreditedTo(p, id) }));
 
-  // Stats
+  // Stats. Only published / accepted (in-press) papers count toward the total,
+  // per-year, and rank distribution; the in-progress pipeline and denied papers
+  // are listed but excluded.
   const byYear: Record<number, number> = {};
   const rankBuckets: Record<string, number> = {};
+  let total = 0;
   let scopusIndexed = 0;
   let q1 = 0;
   for (const p of own) {
-    byYear[p.year] = (byYear[p.year] || 0) + 1;
-    const bucket = p.venue ? getVenueRankBucket(p.venue) : "Chưa phân loại";
-    rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
+    if (countsAsPublication(p.submissionStatus)) {
+      total += 1;
+      byYear[p.year] = (byYear[p.year] || 0) + 1;
+      const bucket = p.venue ? getVenueRankBucket(p.venue) : "Chưa phân loại";
+      rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
+    }
     if (p.scopusIndexStatus === "indexed") {
       scopusIndexed += 1;
       if (isPaperQ1(p)) q1 += 1;
@@ -97,7 +104,7 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
     boMonName,
     account,
     papers,
-    stats: { total: own.length, scopusIndexed, q1, byYear, rankBuckets },
+    stats: { total, pending: own.length - total, scopusIndexed, q1, byYear, rankBuckets },
     indicators,
     kpiByPeriod,
     development,

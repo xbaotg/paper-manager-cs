@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, use } from "react";
 import { Navbar } from "@/app/_components/navbar";
 import { Footer } from "@/app/_components/footer";
 import { getDatabase } from "@/app/actions";
-import { Paper, Lecturer, LECTURER_TITLE_LABELS } from "@/lib/data";
+import { Paper, Lecturer, LECTURER_TITLE_LABELS, countsAsPublication, isUnpublished } from "@/lib/data";
+import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -45,7 +46,11 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     const byYear: Record<number, number> = {};
     const rankBuckets: Record<string, number> = {};
 
-    lecturerPapers.forEach(p => {
+    // Only published / accepted (in-press) papers count toward the totals; the
+    // in-progress pipeline and denied papers are shown in the list but excluded.
+    const counted = lecturerPapers.filter(p => countsAsPublication(p.submissionStatus));
+
+    counted.forEach(p => {
       byYear[p.year] = (byYear[p.year] || 0) + 1;
 
       if (p.venue) {
@@ -57,7 +62,8 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     });
 
     return {
-      total: lecturerPapers.length,
+      total: counted.length,
+      pending: lecturerPapers.length - counted.length,
       byYear,
       rankBuckets
     };
@@ -173,6 +179,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                   <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
                     <div className="text-3xl font-semibold text-primary font-heading">{stats.total}</div>
                     <div className="text-xs uppercase font-semibold text-muted-foreground mt-1 tracking-wider">Bài viết</div>
+                    {stats.pending > 0 && (
+                      <div className="text-[11px] text-muted-foreground mt-1">{stats.pending} bài đang xử lý (không tính)</div>
+                    )}
                   </div>
 
                   <div>
@@ -203,7 +212,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                      <h3 className="text-sm font-semibold mb-6">Bài báo theo năm</h3>
                      <div className="flex items-end gap-1.5 h-32 mt-2 pb-4">
                         {allYears.slice().reverse().map(year => {
-                          const count = stats.byYear[year];
+                          const count = stats.byYear[year] || 0;
                           const heightPct = maxPapersInOneYear > 0 ? (count / maxPapersInOneYear) * 100 : 0;
                           return (
                             <div key={year} className="flex-1 flex flex-col items-center justify-end group gap-1">
@@ -301,6 +310,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                                     <Badge variant="outline" title={rankBucket} className={`text-[10px] py-0 px-1.5 font-medium ${isHighRank ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted/50 text-muted-foreground'}`}>
                                       {venueRank}
                                     </Badge>
+                                  )}
+                                  {isUnpublished(paper.submissionStatus) && (
+                                    <SubmissionStatusBadge status={paper.submissionStatus} className="text-[10px] py-0 px-1.5" />
                                   )}
                                 </p>
                                 {paper.authors.length > 0 && (
