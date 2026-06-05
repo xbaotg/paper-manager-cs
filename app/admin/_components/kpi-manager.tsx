@@ -68,6 +68,9 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
   // PhD headcount is faculty-level only; keep it out of the per-person table.
   // "Số bài báo" (paper_count) is a redundant total — hide it from the columns.
   const perPersonIndicators = indicators.filter((i) => i.agg !== "phd_count" && i.code !== "paper_count");
+  // Faculty-level table keeps PhD headcount but, like the per-person table, drops
+  // the redundant "Số bài báo" total — only Scopus / Q1 / PhD are tracked there.
+  const facultyIndicators = indicators.filter((i) => i.code !== "paper_count");
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId) ?? null;
   // Fixed action-plan window 2026–2030. Each tab is a calendar year; the
   // matching `kpi_periods` row (startYear == year) drives the data. A missing
@@ -270,7 +273,7 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {indicators.map((ind) => {
+                    {facultyIndicators.map((ind) => {
                       const r = rollupByIndicator.get(ind.id);
                       const target = facultyTargetByIndicator.get(ind.id) ?? null;
                       const suggested = selectedPeriod ? suggestedFacultyTarget(ind.code, selectedPeriod.startYear) : null;
