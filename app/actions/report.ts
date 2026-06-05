@@ -3,6 +3,7 @@
 import { requireManager } from "@/lib/dal";
 import { listLecturers } from "@/lib/queries/lecturers";
 import { listPapers } from "@/lib/queries/papers";
+import { ensureVenuesHydrated } from "@/lib/queries/venues";
 import { listBoMon } from "@/lib/queries/bo_mon";
 import { listDevelopment, listDevelopmentCompletedIds } from "@/lib/queries/development";
 import {
@@ -43,6 +44,7 @@ export interface ReportData {
 
 export async function getReportData(periodId?: number): Promise<ReportData> {
   await requireManager();
+  ensureVenuesHydrated();
 
   const periods = listPeriods();
   const period = (periodId ? periods.find((p) => p.id === periodId) : null) ?? periods.find((p) => p.isActive) ?? periods[0] ?? null;
@@ -107,6 +109,7 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
 // represent "Σ chỉ tiêu trong giai đoạn".
 export async function getReportRangeData(from: number, to: number): Promise<ReportData> {
   await requireManager();
+  ensureVenuesHydrated();
   if (from > to) [from, to] = [to, from];
 
   const periodsAll = listPeriods();

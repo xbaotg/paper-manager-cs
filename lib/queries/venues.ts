@@ -1,6 +1,6 @@
 import "server-only";
 import { getDb } from "../sqlite";
-import type { Venue } from "../venues";
+import { applyVenueRows, type Venue } from "../venues";
 
 interface VenueRow {
   id: number;
@@ -35,6 +35,20 @@ export function listVenues(): Venue[] {
 export function getVenueByCode(code: string): Venue | null {
   const r = getDb().prepare("SELECT * FROM venues WHERE code = ?").get(code) as VenueRow | undefined;
   return r ? toVenue(r) : null;
+}
+
+let venuesHydrated = false;
+// Load the DB venue catalog into the in-memory cache that the isomorphic
+// helpers (isVenueScopus / isVenueQ1 / getVenueRank*) read. hydrateVenues() only
+// runs in the browser, so without this the server resolves venues against the
+// build-time seed alone — custom venues and admin venue edits are invisible and
+// every paper at such a venue silently scores 0 in the KPI. Call before any
+// server-side venue lookup (KPI, profile, reports); pass force=true after a
+// venue mutation. Idempotent and cheap (one indexed read of ~600 rows).
+export function ensureVenuesHydrated(force = false): void {
+  if (venuesHydrated && !force) return;
+  applyVenueRows(listVenues());
+  venuesHydrated = true;
 }
 
 // Insert a custom venue. Allocates an id past the seeded range so we never

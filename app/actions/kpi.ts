@@ -17,6 +17,7 @@ import {
   type FacultyTarget,
 } from "@/lib/queries/kpi";
 import { listPapers, listPapersNeedingCredit } from "@/lib/queries/papers";
+import { ensureVenuesHydrated } from "@/lib/queries/venues";
 import { listLecturers } from "@/lib/queries/lecturers";
 import { listDevelopmentCompletedIds } from "@/lib/queries/development";
 import { RANK_PUBLICATION_TARGET, INDICATOR_CODE } from "@/lib/kpi-policy";
@@ -84,6 +85,7 @@ function facultyScopeTargets(all: FacultyTarget[], boMonId: number) {
 
 export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> {
   await requireManager();
+  ensureVenuesHydrated();
   const { periods, selected } = resolvePeriod(periodId);
   const indicators = listIndicators();
   const lecturers = listLecturers().map(toLecturerLite);
@@ -221,6 +223,7 @@ export interface HeadKpiData {
 
 export async function getHeadKpi(periodId?: number): Promise<HeadKpiData> {
   const me = await requireHead();
+  ensureVenuesHydrated();
   const boMonId = me.boMonId!;
   const bm = getBoMonById(boMonId);
   const { periods, selected } = resolvePeriod(periodId);
@@ -263,6 +266,7 @@ export interface MyKpiData {
 
 export async function getMyKpi(periodId?: number): Promise<MyKpiData> {
   const me = await requireLecturer();
+  ensureVenuesHydrated();
   const { periods, selected } = resolvePeriod(periodId);
   // PhD headcount is a faculty metric, not a personal one — hide it here.
   const indicators = listIndicators().filter((i) => i.agg !== "phd_count");

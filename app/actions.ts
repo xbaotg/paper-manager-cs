@@ -5,7 +5,7 @@ import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
-import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode } from "@/lib/queries/venues";
+import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import type { Venue } from "@/lib/venues";
@@ -169,6 +169,10 @@ export async function listVenuesServer(): Promise<Venue[]> {
 export async function addCustomVenueServer(v: Omit<Venue, "id">): Promise<Venue[]> {
   await requireAuth();
   createCustomVenue(v);
+  // Refresh the server venue cache + derived stats: a venue's Scopus/rank flags
+  // feed the KPI, so a new or changed venue can shift "Thực đạt" everywhere.
+  ensureVenuesHydrated(true);
+  revalidatePath("/", "layout");
   return listVenues();
 }
 
@@ -178,11 +182,15 @@ export async function updateVenueServer(
 ): Promise<Venue[]> {
   await requireAuth();
   updateVenueByCode(code, overrides);
+  ensureVenuesHydrated(true);
+  revalidatePath("/", "layout");
   return listVenues();
 }
 
 export async function deleteVenueServer(code: string): Promise<Venue[]> {
   await requireManager();
   deleteVenueByCode(code);
+  ensureVenuesHydrated(true);
+  revalidatePath("/", "layout");
   return listVenues();
 }

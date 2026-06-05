@@ -5706,6 +5706,15 @@ function syncVenuesArray(next: Venue[]): void {
   for (const v of byCode.values()) VENUES.push(v);
 }
 
+// Server-side hydration entry point. The browser path (hydrateVenues) is a no-op
+// on the server, so server code (KPI / profile / reports) would otherwise see
+// only the build-time seed and miss custom venues + admin venue edits, making
+// every paper at such a venue fail isVenueScopus/isVenueQ1. The caller supplies
+// the authoritative DB rows so this file stays isomorphic (no DB import here).
+export function applyVenueRows(next: Venue[]): void {
+  syncVenuesArray(next);
+}
+
 // Best-effort migration of the original localStorage venue store into the DB.
 // Runs once per browser; failures are swallowed so they don't block hydration.
 async function migrateLegacyLocalVenues(

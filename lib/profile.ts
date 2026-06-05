@@ -10,6 +10,7 @@ import {
   type KpiCell,
 } from "./kpi";
 import { getVenueRankBucket, isVenueScopus } from "./venues";
+import { ensureVenuesHydrated } from "./queries/venues";
 import { getLecturerById } from "./queries/lecturers";
 import { getPapersByLecturer, listPapers } from "./queries/papers";
 import { getBoMonById } from "./queries/bo_mon";
@@ -54,6 +55,7 @@ export interface LecturerProfile {
 export function buildLecturerProfile(id: number): LecturerProfile | null {
   const lecturer = getLecturerById(id);
   if (!lecturer) return null;
+  ensureVenuesHydrated();
 
   const academicRank = (lecturer.academicRank ?? "ThS") as AcademicRank;
   const boMonName = lecturer.boMonId != null ? getBoMonById(lecturer.boMonId)?.nameVi ?? null : null;
