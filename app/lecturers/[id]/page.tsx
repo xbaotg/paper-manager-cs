@@ -29,6 +29,7 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
   const [sortField, setSortField] = useState<"year" | "title">("year");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [yearFilter, setYearFilter] = useState<string>("all");
+  const [chartYear, setChartYear] = useState<string>(""); // selected year for the per-year chart
 
   useEffect(() => {
     (async () => {
@@ -65,22 +66,23 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     const credited = lecturerPapers.filter(p => isCreditedTo(p, id));
     const counted = credited.filter(p => countsAsPublication(p.submissionStatus));
 
+    // Rank distribution per year, for the year-selectable chart.
+    const byYearRank: Record<number, Record<string, number>> = {};
+
     counted.forEach(p => {
       byYear[p.year] = (byYear[p.year] || 0) + 1;
-
-      if (p.venue) {
-        const bucket = getVenueRankBucket(p.venue);
-        rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
-      } else {
-        rankBuckets["Khác"] = (rankBuckets["Khác"] || 0) + 1;
-      }
+      const bucket = p.venue ? getVenueRankBucket(p.venue) : "Khác";
+      rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
+      byYearRank[p.year] = byYearRank[p.year] || {};
+      byYearRank[p.year][bucket] = (byYearRank[p.year][bucket] || 0) + 1;
     });
 
     return {
       total: counted.length,
       pending: credited.length - counted.length,
       byYear,
-      rankBuckets
+      rankBuckets,
+      byYearRank
     };
   }, [lecturerPapers, unwrappedParams.id]);
 
@@ -147,7 +149,15 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const maxPapersInOneYear = Math.max(0, ...Object.values(stats.byYear));
+  // Years that have at least one counted publication, newest first — drives the
+  // per-year chart selector. `chartYearEffective` falls back to the latest year.
+  const publishedYears = useMemo(
+    () => Object.keys(stats.byYear).map(Number).sort((a, b) => b - a),
+    [stats.byYear]
+  );
+  const chartYearEffective =
+    chartYear && stats.byYear[Number(chartYear)] != null ? Number(chartYear) : (publishedYears[0] ?? 0);
+  const chartYearTotal = stats.byYear[chartYearEffective] || 0;
 
   return (
     <>
@@ -187,8 +197,9 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <GraduationCap className="h-5 w-5 text-primary" />
-                    Chỉ số khoa học 
+                    Chỉ số khoa học
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Lũy kế tất cả các năm</p>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="bg-primary/5 rounded-xl p-4 border border-primary/10">
@@ -224,25 +235,51 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
                   </div>
 
                   <div className="mt-8 pt-4 border-t border-muted/50">
-                     <h3 className="text-sm font-semibold mb-6">Bài báo theo năm</h3>
-                     <div className="flex items-end gap-1.5 h-32 mt-2 pb-4">
-                        {allYears.slice().reverse().map(year => {
-                          const count = stats.byYear[year] || 0;
-                          const heightPct = maxPapersInOneYear > 0 ? (count / maxPapersInOneYear) * 100 : 0;
-                          return (
-                            <div key={year} className="flex-1 flex flex-col items-center justify-end group gap-1">
-                              <span className="text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity absolute -translate-y-6 bg-foreground text-background px-1.5 py-0.5 rounded shadow z-10">{count}</span>
-                              <div 
-                                className="w-full bg-primary/30 group-hover:bg-primary transition-colors rounded-t-sm relative" 
-                                style={{ height: `${Math.max(4, heightPct)}%` }}
-                              >
-                              </div>
-                              <span className="text-[10px] text-muted-foreground rotate-[-45deg] origin-top-left translate-y-3 whitespace-nowrap font-medium">{year}</span>
-                            </div>
-                          )
-                        })}
+                     <div className="flex items-center justify-between mb-4 gap-2">
+                       <h3 className="text-sm font-semibold">Theo năm</h3>
+                       {publishedYears.length > 0 && (
+                         <Select value={String(chartYearEffective)} onValueChange={(v) => setChartYear(v ?? "")}>
+                           <SelectTrigger className="h-8 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                           <SelectContent>
+                             {publishedYears.map((y) => (
+                               <SelectItem key={y} value={String(y)} className="text-xs">Năm {y}</SelectItem>
+                             ))}
+                           </SelectContent>
+                         </Select>
+                       )}
                      </div>
-                     {allYears.length > 0 && <div className="h-8"></div>} {/* Spacer for rotated labels */}
+                     {publishedYears.length === 0 ? (
+                       <p className="text-xs text-muted-foreground italic">Chưa có công bố được tính.</p>
+                     ) : (
+                       <>
+                         <div className="mb-3">
+                           <span className="text-3xl font-semibold text-primary font-heading">{chartYearTotal}</span>
+                           <span className="text-xs text-muted-foreground ml-1.5">bài năm {chartYearEffective}</span>
+                         </div>
+                         <div className="space-y-2.5">
+                           {Object.entries(stats.byYearRank[chartYearEffective] || {}).sort((a, b) => b[1] - a[1]).map(([bucket, count]) => {
+                             const label =
+                               bucket.includes("Cao") ? "A*/A/Q1" :
+                               bucket.includes("Vừa") ? "B/Q2" :
+                               bucket.includes("lên") ? "C/Q3-4" :
+                               "Khác";
+                             const isHigh = bucket.includes("Cao");
+                             const pct = chartYearTotal > 0 ? (count / chartYearTotal) * 100 : 0;
+                             return (
+                               <div key={bucket} className="space-y-1">
+                                 <div className="flex justify-between text-xs">
+                                   <span className={isHigh ? 'font-semibold text-foreground' : 'text-muted-foreground'}>{label}</span>
+                                   <span className="font-semibold">{count}</span>
+                                 </div>
+                                 <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                   <div className={`h-full ${isHigh ? 'bg-emerald-500' : 'bg-primary/40'}`} style={{ width: `${pct}%` }} />
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </>
+                     )}
                   </div>
                 </CardContent>
               </Card>
