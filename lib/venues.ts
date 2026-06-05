@@ -5760,3 +5760,12 @@ export function isVenueQ1(venueCode: string): boolean {
   const vn = getVenueByCode(venueCode);
   return !!vn && vn.rank.toUpperCase().includes("Q1");
 }
+
+// Whether a paper's venue is Scopus-indexed. Scopus is now a property of the
+// venue alone (the per-paper index status/year fields were removed): a paper
+// counts as Scopus iff its venue is flagged scopusIndexed. Unknown / free-text
+// venue codes resolve to false.
+export function isVenueScopus(venueCode: string): boolean {
+  const vn = getVenueByCode(venueCode);
+  return !!vn && vn.scopusIndexed === 1;
+}

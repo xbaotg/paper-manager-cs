@@ -66,10 +66,9 @@ export function academicRankFromTitle(title: string): AcademicRank {
   }
 }
 
-export type ScopusIndexStatus = "unknown" | "accepted" | "indexed";
-
 // Submission pipeline state — what stage the paper is at in the journal/conf.
-// Distinct from `scopusIndexStatus` which only tracks Scopus indexing.
+// Scopus eligibility is a property of the venue (see isVenueScopus), not the
+// paper; a paper counts toward Scopus once its submission status is accepted.
 export type SubmissionStatus =
   | "submitted"      // sent, waiting
   | "under_review"   // peer review
@@ -136,8 +135,6 @@ export interface Paper {
   creditedLecturerId?: number | null;
   isFirstAuthor?: boolean;
   isCorrespondingAuthor?: boolean;
-  scopusIndexStatus?: ScopusIndexStatus;
-  scopusIndexYear?: number | null; // counting year for Scopus KPIs (NOT publication year)
   quartile?: string | null;        // Q1..Q4 snapshot; null -> fall back to venue rank
   submissionStatus?: SubmissionStatus;
 }

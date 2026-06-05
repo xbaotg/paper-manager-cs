@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/lecturers";
@@ -54,6 +55,10 @@ export async function addPaperServer(paper: Paper): Promise<DatabaseSchema> {
     paper = { ...paper, lecturerIds: withSelf(paper.lecturerIds, user.lecturerId) };
   }
   createPaper(paper);
+  // Paper data feeds KPI actuals, the dashboard and lecturer/faculty profiles —
+  // all separate routes. Purge the cache so "Thực đạt" and every derived stat
+  // refresh on the next visit instead of serving a stale render.
+  revalidatePath("/", "layout");
   return readDatabase();
 }
 
@@ -67,6 +72,7 @@ export async function updatePaperServer(id: number, updatedPaper: Paper): Promis
     updatedPaper = { ...updatedPaper, lecturerIds: withSelf(updatedPaper.lecturerIds, user.lecturerId) };
   }
   updatePaper(id, updatedPaper);
+  revalidatePath("/", "layout");
   return readDatabase();
 }
 
@@ -78,6 +84,7 @@ export async function deletePaperServer(id: number): Promise<DatabaseSchema> {
     }
   }
   deletePaper(id);
+  revalidatePath("/", "layout");
   return readDatabase();
 }
 
@@ -122,6 +129,7 @@ export async function updateCreditedAuthorServer(
   }
 
   updateCreditedLecturer(paperId, lecturerId);
+  revalidatePath("/", "layout");
   return readDatabase();
 }
 
@@ -140,6 +148,7 @@ export async function updatePaperStatusServer(
     }
   }
   updatePaperSubmissionStatus(paperId, status);
+  revalidatePath("/", "layout");
   return readDatabase();
 }
 

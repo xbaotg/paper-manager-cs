@@ -46,9 +46,7 @@ CREATE TABLE IF NOT EXISTS papers (
   credited_lecturer_id     INTEGER REFERENCES lecturers(id) ON DELETE SET NULL,  -- single-credit rule: one paper -> one person
   is_first_author          INTEGER NOT NULL DEFAULT 0,
   is_corresponding_author  INTEGER NOT NULL DEFAULT 0,
-  scopus_index_status      TEXT NOT NULL DEFAULT 'unknown', -- unknown | accepted | indexed
-  scopus_index_year        INTEGER,                         -- counting year for Scopus KPIs (NOT publication year)
-  quartile                 TEXT,                            -- Q1..Q4 snapshot at index time; NULL -> fall back to venue rank
+  quartile                 TEXT,                            -- Q1..Q4 snapshot; NULL -> fall back to venue rank
   submission_status        TEXT NOT NULL DEFAULT 'submitted' -- submitted | under_review | rebuttal | accepted | denied | published
 );
 

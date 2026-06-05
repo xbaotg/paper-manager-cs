@@ -1,5 +1,5 @@
 // KPI calculation. Pure functions reusing the venue scoring helpers.
-import { isVenueQ1 } from "./venues";
+import { isVenueQ1, isVenueScopus } from "./venues";
 import type { Paper, AcademicRank } from "./data";
 import { isPendingSubmission, countsAsPublication } from "./data";
 
@@ -53,14 +53,16 @@ export function isCreditedTo(paper: Paper, lecturerId: number): boolean {
   return paper.lecturerIds?.includes(lecturerId) ?? false;
 }
 
-// A paper counts toward a Scopus KPI in the calendar year it was indexed (the
-// dept counts by index year, not acceptance/publication year). The period's
-// startYear is treated as that calendar year.
-export function scopusInPeriod(paper: Paper, period: KpiPeriod): boolean {
-  if (paper.scopusIndexStatus !== "indexed") return false;
-  const y = paper.scopusIndexYear ?? null;
-  if (y == null) return false;
-  return y === period.startYear;
+// A paper counts toward the Scopus / Q1 KPI when its venue is Scopus-indexed and
+// its submission has been accepted (accepted or published). It is attributed to
+// the year the conference/journal ran — the paper's own `year` (via
+// paperInPeriod), never a separate index year.
+export function scopusCountedInPeriod(paper: Paper, period: KpiPeriod): boolean {
+  return (
+    isVenueScopus(paper.venue) &&
+    countsAsPublication(paper.submissionStatus) &&
+    paperInPeriod(paper, period)
+  );
 }
 
 export function isPaperQ1(paper: Paper): boolean {
@@ -83,7 +85,7 @@ export function computeActual(
     const own = papers.filter(
       (p) =>
         isCreditedTo(p, lecturerId) &&
-        scopusInPeriod(p, period) &&
+        scopusCountedInPeriod(p, period) &&
         (indicator.agg === "scopus_count" || isPaperQ1(p))
     );
     return own.length;
@@ -94,19 +96,18 @@ export function computeActual(
   return own.length;
 }
 
-// Per-lecturer publication funnel for one period. Buckets are mutually
-// exclusive so a paper is counted exactly once:
-//   inProgress      — submitted / under_review / rebuttal (pending review)
-//   acceptedNoIndex — accepted or published but NOT yet Scopus-indexed
-//   indexed         — Scopus-indexed in the period (== the Scopus KPI actual)
-//   q1              — of the indexed, those that are Q1
-// In-progress and accepted attribute by paper (publication) year; indexed/Q1 by
-// Scopus index year — the same split computeActual uses. This is a management
-// overview only: it does NOT feed the official Scopus/Q1 KPI numbers.
+// Per-lecturer publication funnel for one period, attributed by conference year.
+// A narrowing funnel (each is a subset of the previous, except in-progress which
+// is disjoint):
+//   inProgress — submitted / under_review / rebuttal (not yet accepted)
+//   accepted   — accepted or published, at any venue
+//   scopus     — of accepted, those at a Scopus venue  (== the Scopus KPI actual)
+//   q1         — of scopus, those that are Q1           (== the Q1 KPI actual)
+// Denied papers count toward none.
 export interface PipelineCounts {
   inProgress: number;
-  acceptedNoIndex: number;
-  indexed: number;
+  accepted: number;
+  scopus: number;
   q1: number;
 }
 
@@ -120,25 +121,23 @@ export function computePipelineRow(
   papers: Paper[]
 ): PipelineRow {
   let inProgress = 0;
-  let acceptedNoIndex = 0;
-  let indexed = 0;
+  let accepted = 0;
+  let scopus = 0;
   let q1 = 0;
   for (const p of papers) {
     if (!isCreditedTo(p, lecturerId)) continue;
-    const indexedHere = scopusInPeriod(p, period);
-    if (indexedHere) {
-      indexed += 1;
-      if (isPaperQ1(p)) q1 += 1;
-    }
-    // Non-indexed states are attributed by publication year. The `!indexedHere`
-    // guard keeps a paper indexed this period out of the "accepted" bucket so
-    // the funnel never double-counts; denied papers fall through to neither.
-    if (paperInPeriod(p, period) && !indexedHere) {
-      if (isPendingSubmission(p.submissionStatus)) inProgress += 1;
-      else if (countsAsPublication(p.submissionStatus)) acceptedNoIndex += 1;
+    if (!paperInPeriod(p, period)) continue;
+    if (isPendingSubmission(p.submissionStatus)) {
+      inProgress += 1;
+    } else if (countsAsPublication(p.submissionStatus)) {
+      accepted += 1;
+      if (isVenueScopus(p.venue)) {
+        scopus += 1;
+        if (isPaperQ1(p)) q1 += 1;
+      }
     }
   }
-  return { lecturerId, inProgress, acceptedNoIndex, indexed, q1 };
+  return { lecturerId, inProgress, accepted, scopus, q1 };
 }
 
 export interface KpiCell {

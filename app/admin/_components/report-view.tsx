@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { getReportData, getReportRangeData, type ReportData } from "@/app/actions/report";
+import { isVenueScopus } from "@/lib/venues";
 
 const YEARS = [2026, 2027, 2028, 2029, 2030];
 
@@ -74,10 +75,10 @@ export function ReportView({ initial }: { initial: ReportData }) {
   }
 
   function exportPapers() {
-    const header = ["STT", "Năm", "Tiêu đề", "Hội nghị/Tạp chí", "Tác giả", "Tình trạng Scopus", "Năm index", "Xếp hạng", "DOI", "URL"];
+    const header = ["STT", "Năm", "Tiêu đề", "Hội nghị/Tạp chí", "Tác giả", "Scopus", "Xếp hạng", "DOI", "URL"];
     const rows = papers.map((p, idx) => [
       idx + 1, p.year, p.title, p.venue, p.authors,
-      p.scopusIndexStatus ?? "", p.scopusIndexYear ?? "", p.quartile ?? "", p.doi ?? "", p.url ?? "",
+      isVenueScopus(p.venue) ? "Có" : "Không", p.quartile ?? "", p.doi ?? "", p.url ?? "",
     ]);
     downloadCsv("Danh-sach-cong-bo.csv", [header, ...rows]);
   }

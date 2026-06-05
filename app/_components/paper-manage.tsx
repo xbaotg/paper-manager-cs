@@ -16,15 +16,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { updatePaperServer, deletePaperServer, updateCreditedAuthorServer } from "@/app/actions";
-import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort, isVenueScopus } from "@/lib/venues";
 import type { Paper, Lecturer } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
-
-const STATUS_LABEL: Record<string, string> = {
-  unknown: "Chưa rõ",
-  accepted: "Đã chấp nhận",
-  indexed: "Đã index Scopus",
-};
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -121,8 +115,8 @@ export function PaperManage({
               <Badge variant="secondary" className="gap-1"><CalendarDays className="size-3" /> {paper.year}</Badge>
               {paper.venue && <Badge variant="outline">{paper.venue}</Badge>}
               {venueRank && <Badge variant="outline" title={bucket}>{venueRank}</Badge>}
-              {paper.scopusIndexStatus === "indexed" && (
-                <Badge variant="outline" className="text-green-600 border-green-600/40">Scopus {paper.scopusIndexYear ?? ""}</Badge>
+              {paper.venue && isVenueScopus(paper.venue) && (
+                <Badge variant="outline" className="text-green-600 border-green-600/40">Scopus</Badge>
               )}
             </div>
           </div>
@@ -160,7 +154,6 @@ export function PaperManage({
                 </span>
               )}
             </Field>
-            <Field label="Tình trạng Scopus">{STATUS_LABEL[paper.scopusIndexStatus ?? "unknown"]}</Field>
             <Field label="Xếp hạng">{paper.quartile || venueRank || "—"}</Field>
             {paper.doi && (
               <Field label="DOI">

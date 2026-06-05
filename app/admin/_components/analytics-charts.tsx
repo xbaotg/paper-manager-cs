@@ -16,8 +16,8 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { type Paper, type SubmissionStatus, SUBMISSION_STATUS_LABEL } from "@/lib/data";
-import { getVenueRankBucket, getVenueByCode, isVenueQ1 } from "@/lib/venues";
+import { type Paper, type SubmissionStatus, SUBMISSION_STATUS_LABEL, countsAsPublication } from "@/lib/data";
+import { getVenueRankBucket, getVenueByCode, isVenueQ1, isVenueScopus } from "@/lib/venues";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#64748b", "#8b5cf6", "#ec4899"];
 
@@ -242,9 +242,12 @@ export function ScopusByYearChart({ papers }: ChartProps) {
   const data = useMemo(() => {
     const byYear: Record<number, { year: number; scopus: number; other: number; q1: number }> = {};
     papers.forEach((p) => {
-      const y = p.scopusIndexYear ?? p.year;
+      // Only accepted/published papers, attributed by conference year. Scopus is
+      // a venue property; the rest are the non-Scopus accepted share.
+      if (!countsAsPublication(p.submissionStatus)) return;
+      const y = p.year;
       if (!byYear[y]) byYear[y] = { year: y, scopus: 0, other: 0, q1: 0 };
-      if (p.scopusIndexStatus === "indexed") {
+      if (isVenueScopus(p.venue)) {
         byYear[y].scopus += 1;
         const isQ1 = p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
         if (isQ1) byYear[y].q1 += 1;
@@ -281,8 +284,8 @@ export function Q1RatioChart({ papers }: ChartProps) {
   const data = useMemo(() => {
     const byYear: Record<number, { scopus: number; q1: number }> = {};
     papers.forEach((p) => {
-      if (p.scopusIndexStatus !== "indexed") return;
-      const y = p.scopusIndexYear ?? p.year;
+      if (!(countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue))) return;
+      const y = p.year;
       if (!byYear[y]) byYear[y] = { scopus: 0, q1: 0 };
       byYear[y].scopus += 1;
       const isQ1 = p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
@@ -419,9 +422,10 @@ export function TopVenues({ papers }: ChartProps) {
       if (!p.venue) return;
       const r = map.get(p.venue) ?? { code: p.venue, total: 0, scopus: 0, q1: 0 };
       r.total += 1;
-      if (p.scopusIndexStatus === "indexed") r.scopus += 1;
+      const counted = countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue);
+      if (counted) r.scopus += 1;
       const isQ1 = p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
-      if (isQ1) r.q1 += 1;
+      if (counted && isQ1) r.q1 += 1;
       map.set(p.venue, r);
     });
     return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 8);

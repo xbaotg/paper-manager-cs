@@ -47,8 +47,8 @@ import {
   FacultyKpiBars, LecturerKpiBars,
 } from "./_components/analytics-charts";
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
-import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission } from "@/lib/data";
-import { getVenueRankBucket, isVenueQ1 } from "@/lib/venues";
+import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission, countsAsPublication } from "@/lib/data";
+import { getVenueRankBucket, isVenueQ1, isVenueScopus } from "@/lib/venues";
 import { getDatabase } from "@/app/actions";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
@@ -469,9 +469,9 @@ export default function AdminDashboard() {
 
       {/* Submission pipeline + Scopus / Q1 / journal stats */}
       {(() => {
-        const scopusCount = filteredPapers.filter((p) => p.scopusIndexStatus === "indexed").length;
+        const scopusCount = filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue)).length;
         const q1Count = filteredPapers.filter((p) => {
-          if (p.scopusIndexStatus !== "indexed") return false;
+          if (!(countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue))) return false;
           return p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
         }).length;
         const pending = filteredPapers.filter((p) => isPendingSubmission(p.submissionStatus)).length;

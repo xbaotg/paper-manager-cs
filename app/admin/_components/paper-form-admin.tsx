@@ -24,8 +24,9 @@ import {
 import { AuthorshipInput, type AuthorEntry } from "@/app/_components/authorship-input";
 import { VenuePicker } from "./venue-picker";
 import { BibtexImportDialog } from "@/app/_components/bibtex-import-dialog";
-import type { Paper, Lecturer, ScopusIndexStatus, SubmissionStatus } from "@/lib/data";
+import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import { SUBMISSION_STATUS_LABEL } from "@/lib/data";
+import { isVenueScopus } from "@/lib/venues";
 
 interface PaperFormAdminProps {
   open: boolean;
@@ -43,8 +44,6 @@ const emptyForm = {
   doi: "",
   url: "",
   abstract: "",
-  scopusIndexStatus: "unknown" as ScopusIndexStatus,
-  scopusIndexYear: "",
   quartile: "",
   submissionStatus: "submitted" as SubmissionStatus,
 };
@@ -90,8 +89,6 @@ export function PaperFormAdmin({
         doi: editingPaper.doi || "",
         url: editingPaper.url || "",
         abstract: editingPaper.abstract || "",
-        scopusIndexStatus: editingPaper.scopusIndexStatus ?? "unknown",
-        scopusIndexYear: editingPaper.scopusIndexYear != null ? String(editingPaper.scopusIndexYear) : "",
         quartile: editingPaper.quartile ?? "",
         submissionStatus: editingPaper.submissionStatus ?? "submitted",
       });
@@ -171,8 +168,6 @@ export function PaperFormAdmin({
       creditedLecturerId: credited,
       isFirstAuthor: firstAuthor,
       isCorrespondingAuthor: corresponding,
-      scopusIndexStatus: form.scopusIndexStatus,
-      scopusIndexYear: form.scopusIndexYear ? parseInt(form.scopusIndexYear, 10) : null,
       quartile: form.quartile || null,
       submissionStatus: form.submissionStatus,
     };
@@ -282,22 +277,11 @@ export function PaperFormAdmin({
             />
           </div>
 
-          {/* Venue picker */}
+          {/* Venue picker. Scopus eligibility is derived from the chosen venue
+              (shown read-only below), so no Scopus fields are set here. */}
           <VenuePicker
             value={form.venue}
-            onChange={(venue, venueObj) =>
-              setForm((f) => {
-                const next = { ...f, venue };
-                // Picking a Scopus-indexed venue defaults the Scopus status to
-                // "indexed" (index year = pub year), unless the user already set
-                // it. Mirrors the backfill rule in lib/migrate.ts.
-                if (venueObj?.scopusIndexed === 1 && f.scopusIndexStatus === "unknown") {
-                  next.scopusIndexStatus = "indexed";
-                  if (!f.scopusIndexYear && f.year) next.scopusIndexYear = f.year;
-                }
-                return next;
-              })
-            }
+            onChange={(venue) => setForm((f) => ({ ...f, venue }))}
           />
 
           <div className="space-y-2">
@@ -370,32 +354,16 @@ export function PaperFormAdmin({
               </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Tình trạng Scopus</label>
-                <Select
-                  value={form.scopusIndexStatus}
-                  onValueChange={(v) => setForm({ ...form, scopusIndexStatus: (v as ScopusIndexStatus) ?? "unknown" })}
-                >
-                  <SelectTrigger className="h-11 cursor-pointer"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unknown" className="cursor-pointer">Chưa rõ</SelectItem>
-                    <SelectItem value="accepted" className="cursor-pointer">Đã chấp nhận (chưa index)</SelectItem>
-                    <SelectItem value="indexed" className="cursor-pointer">Đã index Scopus</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Năm index</label>
-                <Input
-                  type="number"
-                  min={2000}
-                  max={2035}
-                  placeholder="VD: 2026"
-                  value={form.scopusIndexYear}
-                  onChange={(e) => setForm({ ...form, scopusIndexYear: e.target.value })}
-                  className="h-11"
-                />
+                <label className="text-sm font-medium">Scopus (theo venue)</label>
+                <div className="h-11 flex items-center rounded-md border border-input bg-muted/40 px-3 text-sm">
+                  {form.venue
+                    ? isVenueScopus(form.venue)
+                      ? <span className="text-green-600 font-medium">Có — venue thuộc Scopus</span>
+                      : <span className="text-muted-foreground">Không thuộc Scopus</span>
+                    : <span className="text-muted-foreground">Chọn venue để xác định</span>}
+                </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Xếp hạng (Q)</label>
@@ -415,7 +383,7 @@ export function PaperFormAdmin({
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Bài chỉ được tính vào KPI Scopus/Q1 ở <strong>năm index</strong> (không phải năm chấp nhận).
+              Bài tính vào KPI Scopus/Q1 theo <strong>năm hội nghị</strong> khi đã được chấp nhận, nếu venue thuộc Scopus.
             </p>
           </div>
 

@@ -190,10 +190,7 @@ export async function getReportRangeData(from: number, to: number): Promise<Repo
     };
   });
 
-  const papers = allPapers.filter((p) => {
-    const y = p.scopusIndexYear ?? p.year;
-    return y >= from && y <= to;
-  });
+  const papers = allPapers.filter((p) => p.year >= from && p.year <= to);
 
   return {
     generatedAt: new Date().toISOString(),

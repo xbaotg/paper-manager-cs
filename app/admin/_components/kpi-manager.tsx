@@ -53,11 +53,11 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
   const pipelineTotals = pipeline.reduce(
     (a, p) => ({
       inProgress: a.inProgress + p.inProgress,
-      acceptedNoIndex: a.acceptedNoIndex + p.acceptedNoIndex,
-      indexed: a.indexed + p.indexed,
+      accepted: a.accepted + p.accepted,
+      scopus: a.scopus + p.scopus,
       q1: a.q1 + p.q1,
     }),
-    { inProgress: 0, acceptedNoIndex: 0, indexed: 0, q1: 0 }
+    { inProgress: 0, accepted: 0, scopus: 0, q1: 0 }
   );
   const indById = new Map(indicators.map((i) => [i.id, i]));
   const rollupByIndicator = new Map(rollup.map((r) => [r.indicatorId, r]));
@@ -371,8 +371,8 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
           </div>
 
           {/* Publication pipeline (funnel) per lecturer — management overview.
-              Tracks in-progress + accepted-but-not-yet-indexed work that the
-              official Scopus/Q1 KPI (indexed-only) does not surface. */}
+              A narrowing funnel by conference year: in-progress → accepted →
+              Scopus → Q1. The Scopus column equals the Scopus KPI actual. */}
           <Card>
             <CardContent className="p-5 space-y-4">
               <div>
@@ -380,8 +380,8 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
                   <Activity className="size-4 text-primary" /> Tiến độ bài báo theo giảng viên
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Bài “đang xử lý” và “đã chấp nhận (chưa index Scopus)” chỉ để theo dõi tiến độ —
-                  không tính vào KPI Scopus/Q1 chính thức (chỉ tính bài đã index).
+                  Phễu theo năm hội nghị: “Đang xử lý” (đang phản biện) → “Đã chấp nhận” (mọi venue) →
+                  “Scopus” (venue Scopus, = KPI Scopus) → “Q1”. Chỉ bài đã chấp nhận ở venue Scopus mới tính KPI.
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -395,15 +395,15 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
                       </TableHead>
                       <TableHead className="text-center border-l">
                         Đã chấp nhận
-                        <span className="block text-[10px] font-normal text-muted-foreground">chưa index Scopus</span>
+                        <span className="block text-[10px] font-normal text-muted-foreground">mọi venue</span>
                       </TableHead>
                       <TableHead className="text-center border-l">
-                        Đã index
-                        <span className="block text-[10px] font-normal text-muted-foreground">Scopus (tính KPI)</span>
+                        Scopus
+                        <span className="block text-[10px] font-normal text-muted-foreground">venue Scopus · tính KPI</span>
                       </TableHead>
                       <TableHead className="text-center border-l">
                         Q1
-                        <span className="block text-[10px] font-normal text-muted-foreground">trong số đã index</span>
+                        <span className="block text-[10px] font-normal text-muted-foreground">trong số Scopus</span>
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -417,8 +417,8 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
                             <Link href={`/admin/lecturers/${l.id}`} className="hover:text-primary hover:underline">{l.name}</Link>
                           </TableCell>
                           <TableCell className="text-center border-l">{pl?.inProgress ?? 0}</TableCell>
-                          <TableCell className="text-center border-l text-blue-600">{pl?.acceptedNoIndex ?? 0}</TableCell>
-                          <TableCell className="text-center border-l font-semibold">{pl?.indexed ?? 0}</TableCell>
+                          <TableCell className="text-center border-l text-blue-600">{pl?.accepted ?? 0}</TableCell>
+                          <TableCell className="text-center border-l font-semibold">{pl?.scopus ?? 0}</TableCell>
                           <TableCell className="text-center border-l font-semibold text-green-700 dark:text-green-500">{pl?.q1 ?? 0}</TableCell>
                         </TableRow>
                       );
@@ -426,8 +426,8 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
                     <TableRow className="border-t-2 bg-muted/30 font-semibold">
                       <TableCell>Tổng</TableCell>
                       <TableCell className="text-center border-l">{pipelineTotals.inProgress}</TableCell>
-                      <TableCell className="text-center border-l text-blue-600">{pipelineTotals.acceptedNoIndex}</TableCell>
-                      <TableCell className="text-center border-l">{pipelineTotals.indexed}</TableCell>
+                      <TableCell className="text-center border-l text-blue-600">{pipelineTotals.accepted}</TableCell>
+                      <TableCell className="text-center border-l">{pipelineTotals.scopus}</TableCell>
                       <TableCell className="text-center border-l text-green-700 dark:text-green-500">{pipelineTotals.q1}</TableCell>
                     </TableRow>
                   </TableBody>

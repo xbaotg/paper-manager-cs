@@ -36,6 +36,18 @@ export function addColumnIfMissing(
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`);
 }
 
+/** Drop a column only if it is still present (SQLite 3.35+ `DROP COLUMN`).
+ *  No-op when the column was never added or has already been dropped. */
+export function dropColumnIfExists(
+  db: BetterSqlite3.Database,
+  table: string,
+  column: string
+): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} DROP COLUMN ${column}`);
+}
+
 /** True if the stored DDL for `table` contains `needle` (used to guard table rebuilds). */
 export function tableSqlIncludes(
   db: BetterSqlite3.Database,
@@ -235,6 +247,20 @@ const MIGRATIONS: Migration[] = [
     up: (db) => {
       addColumnIfMissing(db, "lecturers", "avatar_url", "avatar_url TEXT");
       backfillLecturerAvatars(db);
+    },
+  },
+
+  // --- Drop the per-paper Scopus index fields. ---
+  // Scopus is now derived from the venue (venues.scopusIndexed) and a paper
+  // counts toward the KPI once its submission is accepted, attributed by
+  // conference year — so the per-paper scopus_index_status / scopus_index_year
+  // columns are obsolete. submission_status was already backfilled from them
+  // (0006), so acceptance information is preserved before they are removed.
+  {
+    id: "0011_drop_scopus_index_columns",
+    up: (db) => {
+      dropColumnIfExists(db, "papers", "scopus_index_status");
+      dropColumnIfExists(db, "papers", "scopus_index_year");
     },
   },
 ];

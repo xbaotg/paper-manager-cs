@@ -9,7 +9,7 @@ import {
   type KpiIndicator,
   type KpiCell,
 } from "./kpi";
-import { getVenueRankBucket } from "./venues";
+import { getVenueRankBucket, isVenueScopus } from "./venues";
 import { getLecturerById } from "./queries/lecturers";
 import { getPapersByLecturer, listPapers } from "./queries/papers";
 import { getBoMonById } from "./queries/bo_mon";
@@ -78,10 +78,11 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
       byYear[p.year] = (byYear[p.year] || 0) + 1;
       const bucket = p.venue ? getVenueRankBucket(p.venue) : "Chưa phân loại";
       rankBuckets[bucket] = (rankBuckets[bucket] || 0) + 1;
-    }
-    if (p.scopusIndexStatus === "indexed") {
-      scopusIndexed += 1;
-      if (isPaperQ1(p)) q1 += 1;
+      // Scopus is a venue property now; an accepted paper at a Scopus venue counts.
+      if (isVenueScopus(p.venue)) {
+        scopusIndexed += 1;
+        if (isPaperQ1(p)) q1 += 1;
+      }
     }
   }
 

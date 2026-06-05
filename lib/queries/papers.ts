@@ -15,8 +15,6 @@ interface PaperRow {
   credited_lecturer_id: number | null;
   is_first_author: number;
   is_corresponding_author: number;
-  scopus_index_status: string;
-  scopus_index_year: number | null;
   quartile: string | null;
   submission_status: string;
 }
@@ -33,8 +31,6 @@ function toPaper(r: PaperRow, lecturerIds: number[]): Paper {
     creditedLecturerId: r.credited_lecturer_id,
     isFirstAuthor: !!r.is_first_author,
     isCorrespondingAuthor: !!r.is_corresponding_author,
-    scopusIndexStatus: (r.scopus_index_status as Paper["scopusIndexStatus"]) ?? "unknown",
-    scopusIndexYear: r.scopus_index_year,
     quartile: r.quartile,
     submissionStatus: (r.submission_status as Paper["submissionStatus"]) ?? "submitted",
     ...(r.doi ? { doi: r.doi } : {}),
@@ -118,8 +114,8 @@ export function createPaper(p: Paper): void {
       `INSERT INTO papers
          (id, title, year, pub_month, venue_code, authors, doi, url, abstract,
           credited_lecturer_id, is_first_author, is_corresponding_author,
-          scopus_index_status, scopus_index_year, quartile, submission_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          quartile, submission_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       p.id,
       p.title,
@@ -133,8 +129,6 @@ export function createPaper(p: Paper): void {
       normalizeCredited(p),
       p.isFirstAuthor ? 1 : 0,
       p.isCorrespondingAuthor ? 1 : 0,
-      p.scopusIndexStatus ?? "unknown",
-      p.scopusIndexYear ?? null,
       p.quartile ?? null,
       p.submissionStatus ?? "submitted"
     );
@@ -149,7 +143,7 @@ export function updatePaper(id: number, p: Paper): void {
       `UPDATE papers SET
          title = ?, year = ?, pub_month = ?, venue_code = ?, authors = ?, doi = ?, url = ?, abstract = ?,
          credited_lecturer_id = ?, is_first_author = ?, is_corresponding_author = ?,
-         scopus_index_status = ?, scopus_index_year = ?, quartile = ?, submission_status = ?
+         quartile = ?, submission_status = ?
        WHERE id = ?`
     ).run(
       p.title,
@@ -163,8 +157,6 @@ export function updatePaper(id: number, p: Paper): void {
       normalizeCredited(p),
       p.isFirstAuthor ? 1 : 0,
       p.isCorrespondingAuthor ? 1 : 0,
-      p.scopusIndexStatus ?? "unknown",
-      p.scopusIndexYear ?? null,
       p.quartile ?? null,
       p.submissionStatus ?? "submitted",
       id
