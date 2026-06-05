@@ -49,6 +49,7 @@ import {
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
 import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission, countsAsPublication } from "@/lib/data";
 import { getVenueRankBucket, isVenueQ1, isVenueScopus } from "@/lib/venues";
+import { isCreditedTo } from "@/lib/kpi";
 import { getDatabase } from "@/app/actions";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
 
@@ -185,6 +186,9 @@ export default function AdminDashboard() {
         (p.lecturerIds || []).includes(lecturer.id) && countsAsPublication(p.submissionStatus)
       );
       const totalPapers = lecturerPapers.length;
+      // Papers single-credited to this lecturer (the KPI-counted subset of the
+      // ones they co-authored; uncredited papers fall to the first author).
+      const kpiCredited = lecturerPapers.filter((p) => isCreditedTo(p, lecturer.id)).length;
 
       const papersByYear: Record<number, number> = {};
       lecturerPapers.forEach((p) => {
@@ -205,6 +209,7 @@ export default function AdminDashboard() {
       return {
         ...lecturer,
         totalPapers,
+        kpiCredited,
         papersByYear,
         rankBuckets,
         latestYear,
@@ -807,6 +812,9 @@ export default function AdminDashboard() {
                       Bài báo <SortIcon column="totalPapers" />
                     </button>
                   </TableHead>
+                  <TableHead className="text-center" title="Số bài được tính KPI cho giảng viên này (single-credit)">
+                    Bài tính KPI
+                  </TableHead>
                   <TableHead className="hidden lg:table-cell">Phân bố Rank</TableHead>
                   <TableHead className="hidden sm:table-cell">
                     <button onClick={() => toggleLecturerSort("latestYear")} className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer font-semibold">
@@ -849,6 +857,11 @@ export default function AdminDashboard() {
                           {lecturer.totalPapers}
                         </span>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-lg font-semibold font-heading ${lecturer.kpiCredited > 0 ? "text-green-600 dark:text-green-500" : "text-muted-foreground"}`}>
+                          {lecturer.kpiCredited}
+                        </span>
+                      </TableCell>
                       <TableCell className="hidden lg:table-cell">
                         {lecturer.totalPapers === 0 ? (
                           <span className="text-xs text-muted-foreground italic">—</span>
@@ -885,7 +898,7 @@ export default function AdminDashboard() {
                 ))}
                 {filteredLecturerAnalytics.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       Không tìm thấy giảng viên nào phù hợp.
                     </TableCell>
                   </TableRow>
