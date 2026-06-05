@@ -812,7 +812,7 @@ export default function AdminDashboard() {
                       Bài báo <SortIcon column="totalPapers" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-center" title="Số bài được tính KPI cho giảng viên này (single-credit)">
+                  <TableHead className="text-center" title="Số bài được tính KPI">
                     Bài tính KPI
                   </TableHead>
                   <TableHead className="hidden lg:table-cell">Phân bố Rank</TableHead>
