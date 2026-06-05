@@ -121,6 +121,17 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     return Array.from(new Set(lecturerPapers.map(p => p.year))).sort((a, b) => b - a);
   }, [lecturerPapers]);
 
+  // Years that have at least one counted publication, newest first — drives the
+  // per-year chart selector. `chartYearEffective` falls back to the latest year.
+  // NOTE: keep this hook above the early returns below (Rules of Hooks).
+  const publishedYears = useMemo(
+    () => Object.keys(stats.byYear).map(Number).sort((a, b) => b - a),
+    [stats.byYear]
+  );
+  const chartYearEffective =
+    chartYear && stats.byYear[Number(chartYear)] != null ? Number(chartYear) : (publishedYears[0] ?? 0);
+  const chartYearTotal = stats.byYear[chartYearEffective] || 0;
+
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -148,16 +159,6 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
       setSortDir("desc"); // Default heavily to descending for new sorts, especially Year
     }
   };
-
-  // Years that have at least one counted publication, newest first — drives the
-  // per-year chart selector. `chartYearEffective` falls back to the latest year.
-  const publishedYears = useMemo(
-    () => Object.keys(stats.byYear).map(Number).sort((a, b) => b - a),
-    [stats.byYear]
-  );
-  const chartYearEffective =
-    chartYear && stats.byYear[Number(chartYear)] != null ? Number(chartYear) : (publishedYears[0] ?? 0);
-  const chartYearTotal = stats.byYear[chartYearEffective] || 0;
 
   return (
     <>
