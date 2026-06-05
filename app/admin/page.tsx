@@ -178,8 +178,11 @@ export default function AdminDashboard() {
       : filteredPapers;
 
     return lecturers.map((lecturer) => {
+      // Only accepted / published papers count toward the analytics; the
+      // in-progress pipeline (submitted / under_review / rebuttal) and denied
+      // papers are excluded so the per-lecturer totals reflect real output.
       const lecturerPapers = basePapers.filter((p) =>
-        (p.lecturerIds || []).includes(lecturer.id)
+        (p.lecturerIds || []).includes(lecturer.id) && countsAsPublication(p.submissionStatus)
       );
       const totalPapers = lecturerPapers.length;
 
