@@ -66,15 +66,19 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
   const own = getPapersByLecturer(id);
   const papers: ProfilePaper[] = own.map((p) => ({ ...p, credited: isCreditedTo(p, id) }));
 
-  // Stats. Only published / accepted (in-press) papers count toward the total,
-  // per-year, and rank distribution; the in-progress pipeline and denied papers
-  // are listed but excluded.
+  // Stats use single-credit attribution: a paper counts toward this lecturer's
+  // totals only when credited to them (uncredited -> first author), so a paper
+  // co-authored with another faculty member is never counted on both profiles.
+  // The publication list above still shows every paper they authored. Only
+  // published / accepted (in-press) papers count; in-progress and denied are
+  // excluded from the total (and surfaced as `pending`).
+  const credited = own.filter((p) => isCreditedTo(p, id));
   const byYear: Record<number, number> = {};
   const rankBuckets: Record<string, number> = {};
   let total = 0;
   let scopusIndexed = 0;
   let q1 = 0;
-  for (const p of own) {
+  for (const p of credited) {
     if (countsAsPublication(p.submissionStatus)) {
       total += 1;
       byYear[p.year] = (byYear[p.year] || 0) + 1;
@@ -107,7 +111,7 @@ export function buildLecturerProfile(id: number): LecturerProfile | null {
     boMonName,
     account,
     papers,
-    stats: { total, pending: own.length - total, scopusIndexed, q1, byYear, rankBuckets },
+    stats: { total, pending: credited.length - total, scopusIndexed, q1, byYear, rankBuckets },
     indicators,
     kpiByPeriod,
     development,

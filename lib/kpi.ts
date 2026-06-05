@@ -45,12 +45,14 @@ export function paperInPeriod(
 }
 
 // Single-credit attribution: one paper counts for exactly one person. A paper
-// with a credited lecturer counts only for them; un-credited legacy papers fall
-// back to authorship membership so historical numbers don't vanish before a
-// manager assigns credit (surfaced via listPapersNeedingCredit).
+// with a credited lecturer counts only for them. Un-credited papers fall back to
+// the FIRST attached internal author (lecturerIds preserves attach order) — not
+// every co-author — so a paper shared by two faculty is never counted twice in
+// the faculty rollup before a manager assigns explicit credit. This matches the
+// "tạm tính theo tác giả đầu tiên" note and the listPapersNeedingCredit nudge.
 export function isCreditedTo(paper: Paper, lecturerId: number): boolean {
   if (paper.creditedLecturerId != null) return paper.creditedLecturerId === lecturerId;
-  return paper.lecturerIds?.includes(lecturerId) ?? false;
+  return (paper.lecturerIds?.[0] ?? null) === lecturerId;
 }
 
 // A paper counts toward the Scopus / Q1 KPI when its venue is Scopus-indexed and

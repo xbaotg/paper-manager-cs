@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft, Mail, Phone, Building2, GraduationCap, FileText,
-  ShieldCheck, CalendarClock, UserCheck, Target, ArrowUpRight,
+  ShieldCheck, CalendarClock, UserCheck, Target,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +9,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { getVenueRankBucket, getVenueRankShort, isVenueScopus } from "@/lib/venues";
-import { LECTURER_TITLE_LABELS, ACADEMIC_RANK_LABELS, isUnpublished } from "@/lib/data";
-import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
+import { LECTURER_TITLE_LABELS, ACADEMIC_RANK_LABELS } from "@/lib/data";
+import { PublicationList } from "@/app/_components/publication-list";
 import type { LecturerProfile } from "@/lib/profile";
 import type { DevelopmentStatus } from "@/lib/queries/development";
 
@@ -157,43 +157,19 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
       {/* Papers */}
       <section className="space-y-3">
         <h2 className="font-heading font-semibold flex items-center gap-2"><FileText className="size-5 text-primary" /> Danh sách công bố ({papers.length})</h2>
-        <div className="rounded-md border bg-card overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[70px]">Năm</TableHead>
-                <TableHead>Bài báo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {papers.length === 0 && (
-                <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-8">Chưa có công bố.</TableCell></TableRow>
-              )}
-              {papers.map((p) => {
-                const bucket = p.venue ? getVenueRankBucket(p.venue) : "Khác";
-                const venueRank = p.venue ? getVenueRankShort(p.venue) : "";
-                return (
-                  <TableRow key={p.id}>
-                    <TableCell className="align-top font-medium pt-4">{p.year}</TableCell>
-                    <TableCell className="align-top pt-4 pb-4">
-                      <Link href={`/papers/${p.id}`} className="font-medium hover:text-primary hover:underline inline-flex items-start gap-1">
-                        {p.title}
-                        <ArrowUpRight className="size-3 mt-1 shrink-0 opacity-50" />
-                      </Link>
-                      <div className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
-                        {p.venue ? <span>{p.venue}</span> : <i>Chưa rõ nơi đăng</i>}
-                        {venueRank && <Badge variant="outline" className="text-[10px]" title={bucket}>{venueRank}</Badge>}
-                        {isUnpublished(p.submissionStatus) && <SubmissionStatusBadge status={p.submissionStatus} className="text-[10px]" />}
-                        {p.venue && isVenueScopus(p.venue) && <Badge variant="outline" className="text-[10px] text-green-600 border-green-600/40">Scopus</Badge>}
-                        {p.credited && <Badge variant="outline" className="text-[10px] text-primary border-primary/40">Được tính KPI</Badge>}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <PublicationList
+          items={papers.map((p) => ({
+            id: p.id,
+            year: p.year,
+            title: p.title,
+            venue: p.venue,
+            venueRank: p.venue ? getVenueRankShort(p.venue) : "",
+            bucket: p.venue ? getVenueRankBucket(p.venue) : "Khác",
+            isScopus: !!p.venue && isVenueScopus(p.venue),
+            submissionStatus: p.submissionStatus,
+            credited: p.credited,
+          }))}
+        />
       </section>
     </div>
   );

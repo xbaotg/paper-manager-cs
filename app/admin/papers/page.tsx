@@ -54,6 +54,7 @@ import {
   isPendingSubmission,
 } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
+import { getVenueRankShort, getVenueRankBucket, hydrateVenues } from "@/lib/venues";
 import { getDatabase, addPaperServer, updatePaperServer, deletePaperServer, updatePaperStatusServer } from "@/app/actions";
 
 const ITEMS_PER_PAGE = 8;
@@ -79,16 +80,22 @@ export default function PapersPage() {
   const [deleteMultipleOpen, setDeleteMultipleOpen] = useState(false);
 
   useEffect(() => {
-    getDatabase().then(db => {
-      setPapers(db.papers);
-      setLecturers(db.lecturers);
-      setLoaded(true);
-    }).catch(err => {
-      console.error(err);
-      setPapers([]);
-      setLecturers([]);
-      setLoaded(true);
-    });
+    (async () => {
+      try {
+        // Hydrate the client venue cache first so the rank/Scopus badges resolve
+        // custom venues (the static bundle alone misses runtime-added/edited ones).
+        await hydrateVenues();
+        const db = await getDatabase();
+        setPapers(db.papers);
+        setLecturers(db.lecturers);
+      } catch (err) {
+        console.error(err);
+        setPapers([]);
+        setLecturers([]);
+      } finally {
+        setLoaded(true);
+      }
+    })();
   }, []);
 
   // Derive filter options
@@ -506,6 +513,16 @@ export default function PapersPage() {
                       >
                         {paper.venue}
                       </Badge>
+                      {(() => {
+                        const rank = paper.quartile || (paper.venue ? getVenueRankShort(paper.venue) : "");
+                        return rank ? (
+                          <div className="mt-1">
+                            <Badge variant="outline" className="text-[10px]" title={paper.venue ? getVenueRankBucket(paper.venue) : ""}>
+                              {rank}
+                            </Badge>
+                          </div>
+                        ) : null;
+                      })()}
                     </TableCell>
                     <TableCell className="py-4 whitespace-normal">
                       <Select
