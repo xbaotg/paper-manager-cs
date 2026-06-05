@@ -6,7 +6,8 @@ import { Footer } from "@/app/_components/footer";
 import { getDatabase } from "@/app/actions";
 import { Paper, Lecturer, LECTURER_TITLE_LABELS, countsAsPublication, isUnpublished } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
-import { getVenueRankBucket, getVenueRankShort } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort, hydrateVenues } from "@/lib/venues";
+import { isCreditedTo } from "@/lib/kpi";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -30,11 +31,20 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
   const [yearFilter, setYearFilter] = useState<string>("all");
 
   useEffect(() => {
-    getDatabase().then((db) => {
-      setPapers(db.papers);
-      setLecturers(db.lecturers);
-      setLoaded(true);
-    }).catch(console.error);
+    (async () => {
+      try {
+        // Hydrate the client venue cache so rank/Scopus resolution matches the
+        // server (custom venues aren't in the static bundle).
+        await hydrateVenues();
+        const db = await getDatabase();
+        setPapers(db.papers);
+        setLecturers(db.lecturers);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoaded(true);
+      }
+    })();
   }, []);
 
   const lecturer = lecturers.find(l => l.id === Number(unwrappedParams.id));
@@ -46,9 +56,14 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
     const byYear: Record<number, number> = {};
     const rankBuckets: Record<string, number> = {};
 
-    // Only published / accepted (in-press) papers count toward the totals; the
-    // in-progress pipeline and denied papers are shown in the list but excluded.
-    const counted = lecturerPapers.filter(p => countsAsPublication(p.submissionStatus));
+    // Single-credit attribution: only papers credited to this lecturer count
+    // (uncredited -> first author), so a paper co-authored with another faculty
+    // member isn't counted on both profiles. Of those, only published / accepted
+    // (in-press) papers count toward the totals; the in-progress pipeline and
+    // denied papers are shown in the list but excluded.
+    const id = Number(unwrappedParams.id);
+    const credited = lecturerPapers.filter(p => isCreditedTo(p, id));
+    const counted = credited.filter(p => countsAsPublication(p.submissionStatus));
 
     counted.forEach(p => {
       byYear[p.year] = (byYear[p.year] || 0) + 1;
@@ -63,11 +78,11 @@ export default function LecturerProfilePage({ params }: { params: Promise<{ id: 
 
     return {
       total: counted.length,
-      pending: lecturerPapers.length - counted.length,
+      pending: credited.length - counted.length,
       byYear,
       rankBuckets
     };
-  }, [lecturerPapers]);
+  }, [lecturerPapers, unwrappedParams.id]);
 
   const sortedAndFilteredPapers = useMemo(() => {
     let result = [...lecturerPapers];
