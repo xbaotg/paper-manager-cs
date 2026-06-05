@@ -268,8 +268,9 @@ export async function getMyKpi(periodId?: number): Promise<MyKpiData> {
   const me = await requireLecturer();
   ensureVenuesHydrated();
   const { periods, selected } = resolvePeriod(periodId);
-  // PhD headcount is a faculty metric, not a personal one — hide it here.
-  const indicators = listIndicators().filter((i) => i.agg !== "phd_count");
+  // PhD headcount is a faculty metric, not a personal one — hide it here. The
+  // "Số bài báo" total is dropped too (like the admin views); only Scopus / Q1.
+  const indicators = listIndicators().filter((i) => i.agg !== "phd_count" && i.code !== "paper_count");
   if (!selected || !me.lecturerId) {
     return { periods, indicators, selectedPeriodId: selected?.id ?? null, cells: [] };
   }
