@@ -5770,11 +5770,14 @@ export function isVenueQ1(venueCode: string): boolean {
   return !!vn && vn.rank.toUpperCase().includes("Q1");
 }
 
-// Whether a paper's venue is Scopus-indexed. Scopus is now a property of the
-// venue alone (the per-paper index status/year fields were removed): a paper
-// counts as Scopus iff its venue is flagged scopusIndexed. Unknown / free-text
-// venue codes resolve to false.
+// Whether a paper's venue is Scopus-indexed. Scopus is a property of the venue
+// (the per-paper index status/year fields were removed). A venue counts as
+// Scopus when it is explicitly flagged scopusIndexed OR carries a recognized
+// rank — a Scimago quartile (Q1–Q4) or a CORE conference grade (A*/A/B/C) both
+// imply the venue is indexed. The rank fallback tolerates catalog rows where
+// scopusIndexed was left 0 on an obviously ranked venue (e.g. ACMMM A*, WACV A,
+// MS Q1). Unknown / free-text / unranked-and-unflagged codes resolve to false.
 export function isVenueScopus(venueCode: string): boolean {
   const vn = getVenueByCode(venueCode);
-  return !!vn && vn.scopusIndexed === 1;
+  return !!vn && (vn.scopusIndexed === 1 || vn.rank.trim() !== "");
 }
