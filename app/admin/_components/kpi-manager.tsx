@@ -56,7 +56,8 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
     facultyTargets.filter((t) => t.boMonId === 0).map((t) => [t.indicatorId, t.targetValue])
   );
   // PhD headcount is faculty-level only; keep it out of the per-person table.
-  const perPersonIndicators = indicators.filter((i) => i.agg !== "phd_count");
+  // "Số bài báo" (paper_count) is a redundant total — hide it from the columns.
+  const perPersonIndicators = indicators.filter((i) => i.agg !== "phd_count" && i.code !== "paper_count");
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId) ?? null;
   // Fixed action-plan window 2026–2030. Each tab is a calendar year; the
   // matching `kpi_periods` row (startYear == year) drives the data. A missing
