@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Plus, Trash2, Target, Users, TrendingUp, Wand2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Target, Users, TrendingUp, Wand2, AlertTriangle, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,8 +47,18 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
   const [pending, startTransition] = useTransition();
   const [deletePeriod, setDeletePeriod] = useState(false);
 
-  const { periods, indicators, lecturers, rows, rollup, selectedPeriodId, facultyTargets, needsCreditCount } = data;
+  const { periods, indicators, lecturers, rows, rollup, pipeline, selectedPeriodId, facultyTargets, needsCreditCount } = data;
   const rowByLecturer = new Map(rows.map((r) => [r.lecturerId, r]));
+  const pipelineByLecturer = new Map(pipeline.map((p) => [p.lecturerId, p]));
+  const pipelineTotals = pipeline.reduce(
+    (a, p) => ({
+      inProgress: a.inProgress + p.inProgress,
+      acceptedNoIndex: a.acceptedNoIndex + p.acceptedNoIndex,
+      indexed: a.indexed + p.indexed,
+      q1: a.q1 + p.q1,
+    }),
+    { inProgress: 0, acceptedNoIndex: 0, indexed: 0, q1: 0 }
+  );
   const indById = new Map(indicators.map((i) => [i.id, i]));
   const rollupByIndicator = new Map(rollup.map((r) => [r.indicatorId, r]));
   // Faculty-scope (bo_mon_id = 0) target value per indicator.
@@ -359,6 +369,72 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
               </TableBody>
             </Table>
           </div>
+
+          {/* Publication pipeline (funnel) per lecturer — management overview.
+              Tracks in-progress + accepted-but-not-yet-indexed work that the
+              official Scopus/Q1 KPI (indexed-only) does not surface. */}
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Activity className="size-4 text-primary" /> Tiến độ bài báo theo giảng viên
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Bài “đang xử lý” và “đã chấp nhận (chưa index Scopus)” chỉ để theo dõi tiến độ —
+                  không tính vào KPI Scopus/Q1 chính thức (chỉ tính bài đã index).
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[200px]">Giảng viên</TableHead>
+                      <TableHead className="text-center border-l">
+                        Đang xử lý
+                        <span className="block text-[10px] font-normal text-muted-foreground">nộp · phản biện · rebuttal</span>
+                      </TableHead>
+                      <TableHead className="text-center border-l">
+                        Đã chấp nhận
+                        <span className="block text-[10px] font-normal text-muted-foreground">chưa index Scopus</span>
+                      </TableHead>
+                      <TableHead className="text-center border-l">
+                        Đã index
+                        <span className="block text-[10px] font-normal text-muted-foreground">Scopus (tính KPI)</span>
+                      </TableHead>
+                      <TableHead className="text-center border-l">
+                        Q1
+                        <span className="block text-[10px] font-normal text-muted-foreground">trong số đã index</span>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lecturers.map((l) => {
+                      const pl = pipelineByLecturer.get(l.id);
+                      return (
+                        <TableRow key={l.id}>
+                          <TableCell className="font-medium">
+                            <span className="text-muted-foreground text-xs">{l.title}. </span>
+                            <Link href={`/admin/lecturers/${l.id}`} className="hover:text-primary hover:underline">{l.name}</Link>
+                          </TableCell>
+                          <TableCell className="text-center border-l">{pl?.inProgress ?? 0}</TableCell>
+                          <TableCell className="text-center border-l text-blue-600">{pl?.acceptedNoIndex ?? 0}</TableCell>
+                          <TableCell className="text-center border-l font-semibold">{pl?.indexed ?? 0}</TableCell>
+                          <TableCell className="text-center border-l font-semibold text-green-700 dark:text-green-500">{pl?.q1 ?? 0}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    <TableRow className="border-t-2 bg-muted/30 font-semibold">
+                      <TableCell>Tổng</TableCell>
+                      <TableCell className="text-center border-l">{pipelineTotals.inProgress}</TableCell>
+                      <TableCell className="text-center border-l text-blue-600">{pipelineTotals.acceptedNoIndex}</TableCell>
+                      <TableCell className="text-center border-l">{pipelineTotals.indexed}</TableCell>
+                      <TableCell className="text-center border-l text-green-700 dark:text-green-500">{pipelineTotals.q1}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
 

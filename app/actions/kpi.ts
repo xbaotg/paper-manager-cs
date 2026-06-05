@@ -24,6 +24,7 @@ import {
   academicYearLabel,
   computeKpiRow,
   computeFacultyRollup,
+  computePipelineRow,
   type KpiPeriod,
   type KpiIndicator,
   type KpiTarget,
@@ -31,6 +32,7 @@ import {
   type KpiCell,
   type FacultyRollup,
   type LecturerRank,
+  type PipelineRow,
 } from "@/lib/kpi";
 import type { AcademicRank } from "@/lib/data";
 
@@ -51,6 +53,7 @@ export interface ManagerKpiData {
   facultyTargets: FacultyTarget[];
   rows: KpiRow[];
   rollup: FacultyRollup[];
+  pipeline: PipelineRow[];
   needsCreditCount: number;
 }
 
@@ -88,7 +91,7 @@ export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> 
   if (!selected) {
     return {
       periods, indicators, lecturers, selectedPeriodId: null,
-      targets: [], facultyTargets: [], rows: [], rollup: [],
+      targets: [], facultyTargets: [], rows: [], rollup: [], pipeline: [],
       needsCreditCount: listPapersNeedingCredit().length,
     };
   }
@@ -102,6 +105,9 @@ export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> 
   const rows: KpiRow[] = lecturers.map((l) =>
     computeKpiRow(l.id, selected, indicators, targets, papers)
   );
+  const pipeline: PipelineRow[] = lecturers.map((l) =>
+    computePipelineRow(l.id, selected, papers)
+  );
   const rollup = computeFacultyRollup(
     ranks,
     selected,
@@ -114,7 +120,7 @@ export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> 
 
   return {
     periods, indicators, lecturers, selectedPeriodId: selected.id,
-    targets, facultyTargets, rows, rollup,
+    targets, facultyTargets, rows, rollup, pipeline,
     needsCreditCount: listPapersNeedingCredit().length,
   };
 }

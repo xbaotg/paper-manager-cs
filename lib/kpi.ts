@@ -1,6 +1,7 @@
 // KPI calculation. Pure functions reusing the venue scoring helpers.
 import { isVenueQ1 } from "./venues";
 import type { Paper, AcademicRank } from "./data";
+import { isPendingSubmission, countsAsPublication } from "./data";
 
 export interface KpiPeriod {
   id: number;
@@ -91,6 +92,53 @@ export function computeActual(
   // Legacy indicators attribute by publication year.
   const own = papers.filter((p) => isCreditedTo(p, lecturerId) && paperInPeriod(p, period));
   return own.length;
+}
+
+// Per-lecturer publication funnel for one period. Buckets are mutually
+// exclusive so a paper is counted exactly once:
+//   inProgress      — submitted / under_review / rebuttal (pending review)
+//   acceptedNoIndex — accepted or published but NOT yet Scopus-indexed
+//   indexed         — Scopus-indexed in the period (== the Scopus KPI actual)
+//   q1              — of the indexed, those that are Q1
+// In-progress and accepted attribute by paper (publication) year; indexed/Q1 by
+// Scopus index year — the same split computeActual uses. This is a management
+// overview only: it does NOT feed the official Scopus/Q1 KPI numbers.
+export interface PipelineCounts {
+  inProgress: number;
+  acceptedNoIndex: number;
+  indexed: number;
+  q1: number;
+}
+
+export interface PipelineRow extends PipelineCounts {
+  lecturerId: number;
+}
+
+export function computePipelineRow(
+  lecturerId: number,
+  period: KpiPeriod,
+  papers: Paper[]
+): PipelineRow {
+  let inProgress = 0;
+  let acceptedNoIndex = 0;
+  let indexed = 0;
+  let q1 = 0;
+  for (const p of papers) {
+    if (!isCreditedTo(p, lecturerId)) continue;
+    const indexedHere = scopusInPeriod(p, period);
+    if (indexedHere) {
+      indexed += 1;
+      if (isPaperQ1(p)) q1 += 1;
+    }
+    // Non-indexed states are attributed by publication year. The `!indexedHere`
+    // guard keeps a paper indexed this period out of the "accepted" bucket so
+    // the funnel never double-counts; denied papers fall through to neither.
+    if (paperInPeriod(p, period) && !indexedHere) {
+      if (isPendingSubmission(p.submissionStatus)) inProgress += 1;
+      else if (countsAsPublication(p.submissionStatus)) acceptedNoIndex += 1;
+    }
+  }
+  return { lecturerId, inProgress, acceptedNoIndex, indexed, q1 };
 }
 
 export interface KpiCell {
