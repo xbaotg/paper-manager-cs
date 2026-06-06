@@ -99,11 +99,14 @@ export function setPaperLecturers(paperId: number, lecturerIds: number[]): void 
 
 // Normalize the credited lecturer: must be one of the paper's linked authors,
 // else null (the single-credit rule only applies within the faculty's members).
+// When a paper has exactly one internal author there is no ambiguity, so credit
+// them automatically — no manager assignment needed.
 function normalizeCredited(p: Paper): number | null {
   const linked = p.lecturerIds ?? [];
   if (p.creditedLecturerId != null && linked.includes(p.creditedLecturerId)) {
     return p.creditedLecturerId;
   }
+  if (linked.length === 1) return linked[0];
   return null;
 }
 
@@ -182,14 +185,16 @@ export function deletePaper(id: number): void {
   getDb().prepare("DELETE FROM papers WHERE id = ?").run(id);
 }
 
-// Papers with internal authors but no credited person yet — managers must
-// resolve these so the single-credit KPI count is correct.
+// Papers with MULTIPLE internal authors but no credited person yet — these are
+// genuinely ambiguous and managers must resolve them so the single-credit KPI
+// count is correct. Single-author papers are auto-credited (see normalizeCredited)
+// and never flagged here.
 export function listPapersNeedingCredit(): { id: number; title: string; year: number }[] {
   return getDb()
     .prepare(
       `SELECT p.id, p.title, p.year FROM papers p
        WHERE p.credited_lecturer_id IS NULL
-         AND EXISTS (SELECT 1 FROM paper_lecturers pl WHERE pl.paper_id = p.id)
+         AND (SELECT COUNT(*) FROM paper_lecturers pl WHERE pl.paper_id = p.id) > 1
        ORDER BY p.year DESC, p.rowid DESC`
     )
     .all() as { id: number; title: string; year: number }[];

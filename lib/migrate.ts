@@ -263,6 +263,24 @@ const MIGRATIONS: Migration[] = [
       dropColumnIfExists(db, "papers", "scopus_index_year");
     },
   },
+
+  // --- Auto-credit single-author papers. ---
+  // A paper with exactly one internal author has no attribution ambiguity, so
+  // credit them automatically instead of nagging the manager. Backfills existing
+  // uncredited single-author papers; new/edited papers get this from
+  // normalizeCredited (lib/queries/papers.ts).
+  {
+    id: "0012_autocredit_single_author",
+    up: (db) => {
+      db.exec(`
+        UPDATE papers SET credited_lecturer_id = (
+          SELECT pl.lecturer_id FROM paper_lecturers pl WHERE pl.paper_id = papers.id
+        )
+        WHERE credited_lecturer_id IS NULL
+          AND (SELECT COUNT(*) FROM paper_lecturers pl2 WHERE pl2.paper_id = papers.id) = 1
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {
