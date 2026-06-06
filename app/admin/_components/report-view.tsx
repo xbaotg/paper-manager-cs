@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Printer, Download, FileSpreadsheet, Target, GraduationCap } from "lucide-react";
+import { Printer, Download, FileSpreadsheet, Target, GraduationCap, TrendingUp, Building2, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -49,8 +49,11 @@ export function ReportView({ initial }: { initial: ReportData }) {
   const [mode, setMode] = useState<"year" | "range">(initial.range ? "range" : "year");
   const [rangeFrom, setRangeFrom] = useState<number>(initial.range?.from ?? YEARS[0]);
   const [rangeTo, setRangeTo] = useState<number>(initial.range?.to ?? YEARS[YEARS.length - 1]);
-  const { period, periods, indicators, rollup, lecturers, papers, development, phdActual, phdMilestones } = data;
-  const perPerson = indicators.filter((i) => i.agg !== "phd_count");
+  const { period, periods, indicators, rollup, boMonRollups, pipeline, lecturers, papers, development, phdActual, phdMilestones } = data;
+  // Drop the redundant "Số bài báo" total everywhere — keep Scopus / Q1 (+ PhD
+  // headcount in the faculty table).
+  const facultyIndicators = indicators.filter((i) => i.code !== "paper_count");
+  const perPerson = indicators.filter((i) => i.agg !== "phd_count" && i.code !== "paper_count");
   const rollupBy = new Map(rollup.map((r) => [r.indicatorId, r]));
   const periodLabel = data.label;
 
@@ -169,6 +172,46 @@ export function ReportView({ initial }: { initial: ReportData }) {
         <div className="text-center text-muted-foreground py-16 border rounded-md bg-card">Chưa có kỳ KPI.</div>
       ) : (
         <>
+          {/* Executive summary — one-glance status for leadership */}
+          <section className="space-y-3">
+            <h2 className="font-heading font-semibold flex items-center gap-2"><TrendingUp className="size-5 text-primary" /> Tổng quan — {periodLabel}</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {facultyIndicators.map((ind) => {
+                const r = rollupBy.get(ind.id);
+                const isPhd = ind.agg === "phd_count";
+                return (
+                  <Card key={ind.id}>
+                    <CardContent className="p-4">
+                      <div className="text-xs text-muted-foreground">{ind.nameVi}</div>
+                      <div className="flex items-baseline gap-1 mt-1">
+                        <span className="text-2xl font-semibold font-heading">{r?.totalActual ?? 0}</span>
+                        <span className="text-sm text-muted-foreground">/ {r?.facultyTarget ?? "—"} {ind.unit}</span>
+                      </div>
+                      <div className={`text-xs mt-0.5 ${pctColor(r?.facultyPct ?? null)}`}>
+                        {r?.facultyPct == null ? "Chưa đặt chỉ tiêu" : `Đạt ${r.facultyPct}%`}
+                      </div>
+                      {!isPhd && (r?.withTarget ?? 0) > 0 && (
+                        <div className="text-[11px] text-muted-foreground mt-1">{r?.metCount ?? 0}/{r?.withTarget ?? 0} GV đạt chỉ tiêu</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground">Công bố trong kỳ</div>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-2xl font-semibold font-heading text-green-600">{pipeline.publications}</span>
+                    <span className="text-sm text-muted-foreground">đã chấp nhận</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground mt-1">
+                    {pipeline.inProgress} đang xử lý · {pipeline.denied} từ chối
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
           {/* Faculty KPI summary */}
           <section className="space-y-3">
             <h2 className="font-heading font-semibold flex items-center gap-2"><Target className="size-5 text-primary" /> Chỉ tiêu cấp Khoa — {periodLabel}</h2>
@@ -183,7 +226,7 @@ export function ReportView({ initial }: { initial: ReportData }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {indicators.map((ind) => {
+                  {facultyIndicators.map((ind) => {
                     const r = rollupBy.get(ind.id);
                     return (
                       <TableRow key={ind.id}>
@@ -197,6 +240,70 @@ export function ReportView({ initial }: { initial: ReportData }) {
                 </TableBody>
               </Table>
             </div>
+          </section>
+
+          {/* By-department breakdown (year mode only) */}
+          {boMonRollups.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="font-heading font-semibold flex items-center gap-2"><Building2 className="size-5 text-primary" /> Theo bộ môn — {periodLabel}</h2>
+              <div className="rounded-md border bg-card overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Bộ môn</TableHead>
+                      <TableHead className="text-center">GV</TableHead>
+                      {perPerson.map((i) => <TableHead key={i.id} className="text-center border-l">{i.nameVi}</TableHead>)}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {boMonRollups.map((bm) => {
+                      const by = new Map(bm.rollup.map((r) => [r.indicatorId, r]));
+                      return (
+                        <TableRow key={bm.boMonId}>
+                          <TableCell className="font-medium">{bm.boMonName}</TableCell>
+                          <TableCell className="text-center text-muted-foreground">{bm.headcount}</TableCell>
+                          {perPerson.map((i) => {
+                            const r = by.get(i.id);
+                            return (
+                              <TableCell key={i.id} className="text-center border-l">
+                                <span className="font-semibold">{r?.totalActual ?? 0}</span>
+                                <span className="text-muted-foreground">/{r?.facultyTarget ?? "—"}</span>
+                                <span className={`block text-[11px] ${pctColor(r?.facultyPct ?? null)}`}>{r?.facultyPct == null ? "—" : `${r.facultyPct}%`}</span>
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </section>
+          )}
+
+          {/* Submission pipeline detail */}
+          <section className="space-y-3">
+            <h2 className="font-heading font-semibold flex items-center gap-2"><Activity className="size-5 text-primary" /> Tiến độ nộp bài — {periodLabel}</h2>
+            <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+              {[
+                { label: "Đã gửi", v: pipeline.submitted },
+                { label: "Đang phản biện", v: pipeline.underReview },
+                { label: "Rebuttal", v: pipeline.rebuttal },
+                { label: "Đã chấp nhận", v: pipeline.accepted },
+                { label: "Đã xuất bản", v: pipeline.published },
+                { label: "Từ chối", v: pipeline.denied },
+              ].map((s) => (
+                <Card key={s.label}>
+                  <CardContent className="p-3 text-center">
+                    <div className="text-xl font-semibold font-heading">{s.v}</div>
+                    <div className="text-[11px] text-muted-foreground">{s.label}</div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tổng {pipeline.total} bài trong kỳ · {pipeline.inProgress} đang xử lý · {pipeline.publications} đã chấp nhận/xuất bản.
+            </p>
           </section>
 
           {/* PhD development summary */}

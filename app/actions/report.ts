@@ -10,7 +10,7 @@ import {
   listPeriods, listIndicators, listTargetsForPeriod, listFacultyTargets,
 } from "@/lib/queries/kpi";
 import {
-  computeKpiRow, computeFacultyRollup,
+  computeKpiRow, computeFacultyRollup, paperInPeriod,
   type KpiPeriod, type KpiIndicator, type KpiCell, type FacultyRollup, type LecturerRank,
 } from "@/lib/kpi";
 import { PHD_MILESTONES } from "@/lib/kpi-policy";
@@ -26,6 +26,27 @@ export interface ReportLecturer {
   cells: KpiCell[];
 }
 
+// Per-bộ-môn (department) KPI rollup for the by-department breakdown.
+export interface BoMonRollup {
+  boMonId: number;
+  boMonName: string;
+  headcount: number;
+  rollup: FacultyRollup[];
+}
+
+// Submission-pipeline snapshot for the period: distinct papers grouped by stage.
+export interface PipelineSummary {
+  submitted: number;
+  underReview: number;
+  rebuttal: number;
+  accepted: number;
+  published: number;
+  denied: number;
+  inProgress: number;   // submitted + under_review + rebuttal
+  publications: number; // accepted + published (count toward KPI when Scopus)
+  total: number;
+}
+
 export interface ReportData {
   generatedAt: string;
   /** Header / CSV-filename label: kỳ label for a single year, "Y1-Y2" for a range. */
@@ -35,6 +56,8 @@ export interface ReportData {
   periods: KpiPeriod[];
   indicators: KpiIndicator[];
   rollup: FacultyRollup[];
+  boMonRollups: BoMonRollup[];
+  pipeline: PipelineSummary;
   lecturers: ReportLecturer[];
   papers: Paper[];
   development: DevelopmentItem[];
@@ -42,12 +65,40 @@ export interface ReportData {
   phdMilestones: { year: number; target: number }[];
 }
 
+const EMPTY_PIPELINE: PipelineSummary = {
+  submitted: 0, underReview: 0, rebuttal: 0, accepted: 0, published: 0, denied: 0,
+  inProgress: 0, publications: 0, total: 0,
+};
+
+// Group a paper set into pipeline-stage counts (each paper counted once).
+function computePipeline(papers: Paper[]): PipelineSummary {
+  const c = { ...EMPTY_PIPELINE };
+  for (const p of papers) {
+    const s = p.submissionStatus ?? "submitted";
+    if (s === "submitted") c.submitted += 1;
+    else if (s === "under_review") c.underReview += 1;
+    else if (s === "rebuttal") c.rebuttal += 1;
+    else if (s === "accepted") c.accepted += 1;
+    else if (s === "published") c.published += 1;
+    else if (s === "denied") c.denied += 1;
+  }
+  c.inProgress = c.submitted + c.underReview + c.rebuttal;
+  c.publications = c.accepted + c.published;
+  c.total = papers.length;
+  return c;
+}
+
 export async function getReportData(periodId?: number): Promise<ReportData> {
   await requireManager();
   ensureVenuesHydrated();
 
   const periods = listPeriods();
-  const period = (periodId ? periods.find((p) => p.id === periodId) : null) ?? periods.find((p) => p.isActive) ?? periods[0] ?? null;
+  // Default to the period covering the current calendar year (e.g. 2026 ->
+  // "2026-2027"), falling back to the active/first period.
+  const currentYear = new Date().getFullYear();
+  const period = (periodId ? periods.find((p) => p.id === periodId) : null)
+    ?? periods.find((p) => p.startYear === currentYear)
+    ?? periods.find((p) => p.isActive) ?? periods[0] ?? null;
   const indicators = listIndicators();
   const allLecturers = listLecturers();
   const boMonName = new Map<number, string>();
@@ -65,15 +116,38 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
       }).length;
 
   let rollup: FacultyRollup[] = [];
+  let boMonRollups: BoMonRollup[] = [];
+  let pipeline: PipelineSummary = EMPTY_PIPELINE;
   const lecturers: ReportLecturer[] = [];
 
   if (period) {
     const targets = listTargetsForPeriod(period.id);
-    const facultyTargets = listFacultyTargets(period.id)
+    const allFacultyTargets = listFacultyTargets(period.id);
+    const facultyTargets = allFacultyTargets
       .filter((t) => t.boMonId === 0)
       .map((t) => ({ indicatorId: t.indicatorId, targetValue: t.targetValue }));
     const completed = new Set(listDevelopmentCompletedIds());
     rollup = computeFacultyRollup(ranks, period, indicators, targets, facultyTargets, papers, completed);
+
+    // Per-department rollups (skip departments with no lecturers).
+    boMonRollups = boMon
+      .map((bm) => {
+        const bmLecturers = allLecturers.filter((l) => (l.boMonId ?? null) === bm.id);
+        const bmRanks: LecturerRank[] = bmLecturers.map((l) => ({ id: l.id, academicRank: (l.academicRank ?? "ThS") as AcademicRank }));
+        const bmFt = allFacultyTargets
+          .filter((t) => t.boMonId === bm.id)
+          .map((t) => ({ indicatorId: t.indicatorId, targetValue: t.targetValue }));
+        return {
+          boMonId: bm.id,
+          boMonName: bm.nameVi,
+          headcount: bmLecturers.length,
+          rollup: computeFacultyRollup(bmRanks, period, indicators, targets, bmFt, papers, completed),
+        };
+      })
+      .filter((b) => b.headcount > 0);
+
+    // Submission pipeline for papers attributed to this period (conference year).
+    pipeline = computePipeline(papers.filter((p) => paperInPeriod(p, period)));
 
     for (const l of allLecturers) {
       const row = computeKpiRow(l.id, period, indicators, targets, papers);
@@ -96,6 +170,8 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
     periods,
     indicators,
     rollup,
+    boMonRollups,
+    pipeline,
     lecturers,
     papers,
     development,
@@ -203,6 +279,9 @@ export async function getReportRangeData(from: number, to: number): Promise<Repo
     periods: periodsAll,
     indicators,
     rollup: aggRollup,
+    // Per-department breakdown is year-mode only; pipeline summed across the range.
+    boMonRollups: [],
+    pipeline: computePipeline(papers),
     lecturers,
     papers,
     development,
