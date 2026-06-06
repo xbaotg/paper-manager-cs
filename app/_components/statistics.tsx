@@ -131,7 +131,7 @@ function AnimatedBar({
   }, [pct]);
 
   return (
-    <div className="relative w-full flex justify-center" style={{ height: "100%" }}>
+    <div className="relative w-full flex items-end justify-center" style={{ height: "100%" }}>
       <div
         ref={ref}
         className="w-full max-w-[48px] bg-gradient-to-t from-primary to-primary/60 rounded-t-md transition-all cursor-pointer hover:brightness-110"
