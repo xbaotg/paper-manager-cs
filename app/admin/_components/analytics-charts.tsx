@@ -327,6 +327,8 @@ interface FacultyKpiBarsProps {
 // Faculty actual vs target per indicator — the headline "did we hit the year".
 export function FacultyKpiBars({ rollup, indicators }: FacultyKpiBarsProps) {
   const data = indicators
+    // Drop the redundant "Số bài báo" total — keep Scopus / Q1 / PhD headcount.
+    .filter((i) => i.code !== "paper_count")
     .map((i) => {
       const r = rollup.find((x) => x.indicatorId === i.id);
       const actual = r?.totalActual ?? 0;
