@@ -11,10 +11,12 @@ export function Statistics({ papers }: { papers: Paper[] }) {
   papers.forEach((p) => {
     yearCounts[p.year] = (yearCounts[p.year] || 0) + 1;
   });
+  // Show only the most recent years so the bar chart never overflows the card.
   const years = Object.keys(yearCounts)
     .map(Number)
-    .sort((a, b) => a - b);
-  const maxYear = Math.max(...Object.values(yearCounts), 1);
+    .sort((a, b) => a - b)
+    .slice(-10);
+  const maxYear = Math.max(...years.map((y) => yearCounts[y]), 1);
 
   // Top venues
   const venueCounts: Record<string, number> = {};
@@ -47,17 +49,17 @@ export function Statistics({ papers }: { papers: Paper[] }) {
                 <BarChart3 className="size-5 text-primary" />
                 Bài báo theo năm
               </h3>
-              <div className="flex items-end gap-3 h-44">
+              <div className="flex items-end gap-1.5 sm:gap-2 h-44">
                 {years.map((year, i) => {
                   const count = yearCounts[year];
                   const pct = (count / maxYear) * 100;
                   return (
                     <div
                       key={year}
-                      className="flex-1 flex flex-col items-center justify-end h-full"
+                      className="flex-1 min-w-0 flex flex-col items-center justify-end h-full"
                     >
                       <AnimatedBar pct={pct} count={count} delay={i * 100} />
-                      <span className="text-xs text-muted-foreground font-medium mt-2">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-2 tabular-nums">
                         {year}
                       </span>
                     </div>
