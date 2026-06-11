@@ -51,6 +51,31 @@ export function normalizeAuthorName(author: string): string {
   return normalizeStr(formatAuthorName(author));
 }
 
+// Strip publication-proceedings boilerplate from a venue string so the real
+// conference/journal name is what gets fuzzy-matched. BibTeX booktitles and
+// Scholar venue lines wrap the actual name in noise like
+//   "Proceedings of the 12th International Symposium on ICT, 2023"
+// which drags down similarity against the clean catalog name. Applied to BOTH
+// the query and the catalog entries (symmetric), so prefixed catalog names match
+// too. Leading-only stripping keeps meaningful trailing tokens (e.g. the
+// "Companion" in "... Computation Conference Companion") intact.
+export function cleanVenueForMatch(raw: string): string {
+  if (!raw) return "";
+  let v = raw;
+  // Leading "(In) Proceedings of (the)" / "Proc. of (the)" / "Proceedings ".
+  v = v.replace(/^\s*in\s+/i, "");
+  v = v.replace(/^\s*proc(?:eedings|\.)?\s+(?:of\s+)?(?:the\s+)?/i, "");
+  // Leading "Companion/Workshops of/to (the)".
+  v = v.replace(/^\s*(?:companion|workshops?)\s+(?:of|to)\s+(?:the\s+)?/i, "");
+  // Ordinals anywhere: "12th", "1st", "23rd", "2nd" (with optional leading "the").
+  v = v.replace(/\b(?:the\s+)?\d{1,3}(?:st|nd|rd|th)\b/gi, " ");
+  // A leftover leading bare article.
+  v = v.replace(/^\s*the\s+/i, "");
+  // Trailing year: ", 2023" / " (2023)" / " 2023".
+  v = v.replace(/[\s,(]+\d{4}\)?\s*$/, "");
+  return v.replace(/\s+/g, " ").trim();
+}
+
 export function matchPaperData(
   title: string,
   year: number | "",
@@ -65,10 +90,12 @@ export function matchPaperData(
   let bestVenueScore = 0;
 
   if (venueRaw) {
-    const normVenue = normalizeStr(venueRaw);
+    // Match on the de-boilerplated name (symmetric: query + catalog), but the
+    // raw `venueRaw` is still returned for display.
+    const normVenue = normalizeStr(cleanVenueForMatch(venueRaw));
     for (const v of VENUES) {
-      const scoreEn = stringSimilarity(normVenue, normalizeStr(v.nameEn));
-      const scoreVi = stringSimilarity(normVenue, normalizeStr(v.nameVi));
+      const scoreEn = stringSimilarity(normVenue, normalizeStr(cleanVenueForMatch(v.nameEn)));
+      const scoreVi = stringSimilarity(normVenue, normalizeStr(cleanVenueForMatch(v.nameVi)));
       const codeMatch = normVenue.includes(normalizeStr(v.code)) ? 0.85 : 0;
       
       let score = Math.max(scoreEn, scoreVi, codeMatch);
