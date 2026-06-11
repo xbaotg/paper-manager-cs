@@ -225,7 +225,10 @@ export function PublicationsTable({
                       <SortIcon field="venue" />
                     </span>
                   </TableHead>
-                  <TableHead className="w-[38%] text-muted-foreground font-semibold text-xs uppercase tracking-wider py-4">
+                  <TableHead className="w-[15%] text-muted-foreground font-semibold text-xs uppercase tracking-wider py-4">
+                    Giảng viên Khoa
+                  </TableHead>
+                  <TableHead className="w-[23%] text-muted-foreground font-semibold text-xs uppercase tracking-wider py-4">
                     Tác giả
                   </TableHead>
                 </TableRow>
@@ -233,7 +236,7 @@ export function PublicationsTable({
               <TableBody>
                 {pageItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-40 text-center whitespace-normal">
+                    <TableCell colSpan={5} className="h-40 text-center whitespace-normal">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <FileSearch className="size-10 text-primary/30" />
                         <p>Không tìm thấy bài báo nào</p>
@@ -267,10 +270,10 @@ export function PublicationsTable({
                           {paper.venue}
                         </Badge>
                       </TableCell>
+                      {/* Internal lecturers (Vietnamese names) — own column */}
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
-                        {/* Lecturer badges */}
-                        {(paper.lecturerIds || []).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-1">
+                        {(paper.lecturerIds || []).length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
                             {paper.lecturerIds.map((lid) => {
                               const l = lecturerMap[lid];
                               return l ? (
@@ -284,7 +287,12 @@ export function PublicationsTable({
                               ) : null;
                             })}
                           </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
                         )}
+                      </TableCell>
+                      {/* Authors exactly as written in the paper */}
+                      <TableCell className="px-4 py-4 align-middle whitespace-normal">
                         <p className="text-sm text-muted-foreground leading-relaxed break-words">
                           {paper.authors}
                         </p>

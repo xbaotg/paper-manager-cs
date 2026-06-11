@@ -147,11 +147,13 @@ export function BibtexImportDialog({
         // internal
         const l = lecturers.find(x => x.id === mapping);
         if (l) {
-          finalAuthors.push({ 
-            type: "internal", 
-            id: l.id, 
-            name: `${l.title}. ${l.name}`, 
-            email: l.email 
+          finalAuthors.push({
+            type: "internal",
+            id: l.id,
+            // Keep the author's name as written in the paper; the lecturer's
+            // Vietnamese name is shown separately as a badge (via the id link).
+            name: author.rawName,
+            email: l.email
           });
         }
         // Save/Update mapping alias for future imports
