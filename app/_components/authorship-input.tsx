@@ -141,7 +141,10 @@ export function AuthorshipInput({ lecturers, value, onChange }: AuthorshipInputP
                if (id === null) return;
                const l = lecturers.find(x => x.id === id);
                if (l) {
-                 onChange([...value, { type: "internal", id: l.id, name: `${l.title}. ${l.name}`, email: l.email }]);
+                 // Store the name without the academic-title prefix; the lecturer
+                 // link (id) drives the badge. Edit the field for the exact
+                 // paper spelling if needed.
+                 onChange([...value, { type: "internal", id: l.id, name: l.name, email: l.email }]);
                }
              }}
              lecturers={lecturers}

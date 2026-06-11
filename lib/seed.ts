@@ -35,12 +35,56 @@ export function seedDatabase(db: BetterSqlite3.Database) {
   backfillLecturerBoMon(db);
 
   const done = db.prepare("SELECT value FROM meta WHERE key = ?").get(SEED_FLAG);
+  if (!done) {
+    const tx = db.transaction(() => {
+      seedCoreData(db);
+      seedVenues(db);
+      db.prepare("INSERT INTO meta (key, value) VALUES (?, datetime('now'))").run(SEED_FLAG);
+    });
+    tx();
+  }
+
+  // One-time data fixes that must also reach already-seeded (production) volumes,
+  // AFTER the core data is present. Each self-guards via its own meta flag, so it
+  // runs exactly once and never clobbers later user edits.
+  restoreOverwrittenAuthorNames(db);
+}
+
+// Past BibTeX/OpenAlex imports overwrote a matched author's name in the stored
+// author string with the lecturer's "Học hàm. Tên" (e.g. "ThS. Đỗ Văn Tiến"),
+// losing the name as written in the paper. Restore the originals (provided by
+// the Khoa) one time. Matches any academic-title prefix so it works regardless
+// of the title used at import time; runs once via AUTHOR_FIX_FLAG.
+const AUTHOR_FIX_FLAG = "author_names_restored_v1";
+const AUTHOR_TITLE_RE = /^(GS\.TS|PGS\.TS|TS|ThS|NCS|CN|CĐ|TC|CL|KS)\.\s*/;
+const AUTHOR_NAME_FIXES: Record<string, string> = {
+  "Ngô Đức Thành": "Thanh Duc Ngo",
+  "Đỗ Văn Tiến": "Tien Do",
+  "Mai Tiến Dũng": "Tien-Dung Mai",
+  "Lê Trần Trọng Khiêm": "Khiem Le",
+  "Trần Doãn Thuyên": "Thuyen Tran",
+  "Lương Ngọc Hoàng": "Ngoc Hoang Luong",
+};
+
+function restoreOverwrittenAuthorNames(db: BetterSqlite3.Database) {
+  const done = db.prepare("SELECT value FROM meta WHERE key = ?").get(AUTHOR_FIX_FLAG);
   if (done) return;
 
+  const rows = db.prepare("SELECT id, authors FROM papers").all() as { id: number; authors: string }[];
+  const upd = db.prepare("UPDATE papers SET authors = ? WHERE id = ?");
   const tx = db.transaction(() => {
-    seedCoreData(db);
-    seedVenues(db);
-    db.prepare("INSERT INTO meta (key, value) VALUES (?, datetime('now'))").run(SEED_FLAG);
+    for (const r of rows) {
+      const tokens = String(r.authors || "").split(",").map((t) => t.trim()).filter(Boolean);
+      let changed = false;
+      const next = tokens.map((tok) => {
+        const stripped = tok.replace(AUTHOR_TITLE_RE, "").trim();
+        const original = AUTHOR_NAME_FIXES[stripped];
+        if (original) { changed = true; return original; }
+        return tok;
+      });
+      if (changed) upd.run(next.join(", "), r.id);
+    }
+    db.prepare("INSERT INTO meta (key, value) VALUES (?, datetime('now'))").run(AUTHOR_FIX_FLAG);
   });
   tx();
 }
