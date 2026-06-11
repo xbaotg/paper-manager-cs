@@ -16,6 +16,7 @@ import {
   ExternalLink,
   ArrowUp,
   ArrowDown,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ import {
 import { toast } from "sonner";
 import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
 import { PaperFormAdmin } from "../_components/paper-form-admin";
+import { ScholarImportDialog } from "@/app/_components/scholar-import-dialog";
 import { ConfirmDialog } from "../_components/confirm-dialog";
 import {
   type Paper,
@@ -73,6 +75,7 @@ export default function PapersPage() {
   const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [scholarOpen, setScholarOpen] = useState(false);
   const [editing, setEditing] = useState<Paper | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
 
@@ -265,6 +268,14 @@ export default function PapersPage() {
               Xóa đã chọn ({selectedIds.size})
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            onClick={() => setScholarOpen(true)}
+          >
+            <GraduationCap className="size-4" data-icon="inline-start" />
+            Nhập từ Google Scholar
+          </Button>
           <Button
             className="cursor-pointer bg-cta text-cta-foreground hover:bg-cta/90"
             onClick={() => {
@@ -667,6 +678,13 @@ export default function PapersPage() {
         onSave={handleSave}
         lecturers={lecturers}
         editingPaper={editing}
+      />
+
+      <ScholarImportDialog
+        open={scholarOpen}
+        onOpenChange={setScholarOpen}
+        lecturers={lecturers}
+        onImported={(imported) => setPapers(imported)}
       />
 
       <ConfirmDialog

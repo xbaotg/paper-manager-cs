@@ -62,6 +62,25 @@ export async function addPaperServer(paper: Paper): Promise<DatabaseSchema> {
   return readDatabase();
 }
 
+// Bulk insert — used by the Google Scholar importer after the user has reviewed
+// the scanned drafts. One transaction's worth of inserts + a single cache purge
+// (vs. one revalidate per paper) so a 50-paper import doesn't thrash the cache.
+export async function addPapersBulkServer(papers: Paper[]): Promise<DatabaseSchema> {
+  const user = await requireAuth();
+  for (const paper of papers) {
+    const p =
+      user.role === "lecturer"
+        ? (() => {
+            if (!user.lecturerId) throw new Error("Tài khoản chưa liên kết giảng viên.");
+            return { ...paper, lecturerIds: withSelf(paper.lecturerIds, user.lecturerId) };
+          })()
+        : paper;
+    createPaper(p);
+  }
+  revalidatePath("/", "layout");
+  return readDatabase();
+}
+
 export async function updatePaperServer(id: number, updatedPaper: Paper): Promise<DatabaseSchema> {
   const user = await requireAuth();
   if (user.role === "lecturer") {
