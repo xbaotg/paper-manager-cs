@@ -327,6 +327,7 @@ export function VenuePicker({
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         initialData={transientVenue}
+        isNew
         onSave={handleSaveCustomVenue}
       />
     </div>

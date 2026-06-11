@@ -10,17 +10,23 @@ interface VenueFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialData?: Venue | null;
+  /** Force "create" mode even with prefilled initialData (e.g. a draft from the
+   *  venue picker), so the code stays editable. Defaults to inferring from
+   *  initialData (present = edit existing). */
+  isNew?: boolean;
   onSave: (venue: Venue, isNew: boolean) => void;
 }
 
-export function VenueFormDialog({ open, onOpenChange, initialData, onSave }: VenueFormDialogProps) {
+export function VenueFormDialog({ open, onOpenChange, initialData, isNew, onSave }: VenueFormDialogProps) {
   const [customCode, setCustomCode] = useState("");
   const [customName, setCustomName] = useState("");
   const [customType, setCustomType] = useState(1);
   const [customRank, setCustomRank] = useState("Khác");
   const [customScopus, setCustomScopus] = useState(0);
 
-  const isEditing = !!initialData;
+  // Editing an EXISTING venue locks the code (papers reference it). A prefilled
+  // draft (isNew) is still a create, so its code stays editable.
+  const isEditing = isNew !== undefined ? !isNew : !!initialData;
 
   useEffect(() => {
     if (open) {
