@@ -7,15 +7,16 @@ import { createLecturer, updateLecturer, deleteLecturer } from "@/lib/queries/le
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
+import { countsAsPublication } from "@/lib/data";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
 import type { Venue } from "@/lib/venues";
 
 // Read-only snapshot — public (the home page + lecturer directory are public).
-// Rejected ("denied") papers are private: only admins/head and the paper's own
-// author may see them. They are dropped here for everyone else so the rejected
-// status never reaches a public client (UI hiding alone would still ship it in
-// the payload). Other in-progress statuses (submitted/under_review/rebuttal/
-// accepted) stay visible.
+// Only ACCEPTED/PUBLISHED papers are public. In-progress submissions
+// (submitted/under_review/rebuttal) and rejected (denied) papers are private:
+// visible only to admins/head and the paper's own author. They are dropped here
+// for everyone else so an un-accepted paper never reaches a public client (UI
+// hiding alone would still ship it in the payload).
 export async function getDatabase(): Promise<DatabaseSchema> {
   const db = readDatabase();
   const user = await getCurrentUser();
@@ -24,7 +25,7 @@ export async function getDatabase(): Promise<DatabaseSchema> {
   const myLecturerId = user?.lecturerId ?? null;
   const papers = db.papers.filter(
     (p) =>
-      p.submissionStatus !== "denied" ||
+      countsAsPublication(p.submissionStatus) ||
       (myLecturerId != null && p.lecturerIds.includes(myLecturerId))
   );
   return { ...db, papers };

@@ -48,6 +48,26 @@ export function seedDatabase(db: BetterSqlite3.Database) {
   // AFTER the core data is present. Each self-guards via its own meta flag, so it
   // runs exactly once and never clobbers later user edits.
   restoreOverwrittenAuthorNames(db);
+  publishLegacySubmittedPapers(db);
+}
+
+// The legacy JSON catalog predates the submission pipeline, so imported papers
+// land at the column default 'submitted'. They are in fact published work — and
+// since only accepted/published papers are public (see getDatabase), leaving the
+// catalog as 'submitted' would hide it entirely from public/non-admin viewers.
+// Promote every paper still 'submitted' to 'published' exactly once. Genuine
+// in-progress submissions added AFTER this runs keep their status and stay
+// private as intended.
+const LEGACY_PUBLISHED_FLAG = "legacy_submitted_published_v1";
+
+function publishLegacySubmittedPapers(db: BetterSqlite3.Database) {
+  const done = db.prepare("SELECT value FROM meta WHERE key = ?").get(LEGACY_PUBLISHED_FLAG);
+  if (done) return;
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE papers SET submission_status = 'published' WHERE submission_status = 'submitted'").run();
+    db.prepare("INSERT INTO meta (key, value) VALUES (?, datetime('now'))").run(LEGACY_PUBLISHED_FLAG);
+  });
+  tx();
 }
 
 // Past BibTeX/OpenAlex imports overwrote a matched author's name in the stored
