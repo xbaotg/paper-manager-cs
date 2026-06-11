@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AuthorshipInput, type AuthorEntry } from "@/app/_components/authorship-input";
+import { type AuthorEntry } from "@/app/_components/authorship-input";
+import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
 import { VenuePicker } from "./venue-picker";
 import { BibtexImportDialog } from "@/app/_components/bibtex-import-dialog";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
@@ -56,7 +57,11 @@ export function PaperFormAdmin({
   editingPaper,
 }: PaperFormAdminProps) {
   const [form, setForm] = useState(emptyForm);
-  const [authors, setAuthors] = useState<AuthorEntry[]>([]);
+  // Authors are stored verbatim as a free-text string (the names exactly as in
+  // the paper). The internal-lecturer link (for KPI) is a SEPARATE id list, so
+  // attribution never depends on a lecturer's name appearing in the author text.
+  const [authorsText, setAuthorsText] = useState("");
+  const [internalLecturerIds, setInternalLecturerIds] = useState<number[]>([]);
   const [creditedId, setCreditedId] = useState<string>("");
   const [firstAuthor, setFirstAuthor] = useState(false);
   const [corresponding, setCorresponding] = useState(false);
@@ -96,41 +101,33 @@ export function PaperFormAdmin({
       setFirstAuthor(!!editingPaper.isFirstAuthor);
       setCorresponding(!!editingPaper.isCorrespondingAuthor);
 
-      const allNames = editingPaper.authors ? editingPaper.authors.split(",").map(x => x.trim()).filter(Boolean) : [];
-      const tempAuthors: AuthorEntry[] = [];
-      const usedIds = new Set<number>();
-      
-      allNames.forEach(name => {
-         const l = lecturers.find(x => `${x.title}. ${x.name}` === name && (editingPaper.lecturerIds || []).includes(x.id));
-         if (l) {
-            tempAuthors.push({ type: "internal", id: l.id, name: `${l.title}. ${l.name}`, email: l.email });
-            usedIds.add(l.id);
-         } else {
-            tempAuthors.push({ type: "external", name });
-         }
-      });
-
-      // Fallback for missing internal IDs that didn't match the string perfectly
-      (editingPaper.lecturerIds || []).forEach(lid => {
-         if (!usedIds.has(lid)) {
-             const l = lecturers.find(x => x.id === lid);
-             if (l) tempAuthors.push({ type: "internal", id: l.id, name: `${l.title}. ${l.name}`, email: l.email });
-         }
-      });
-      setAuthors(tempAuthors);
+      // Verbatim author text + lecturer links straight from storage — no name
+      // matching (which is what used to mis-tag / re-inject lecturer names).
+      setAuthorsText(editingPaper.authors || "");
+      setInternalLecturerIds(editingPaper.lecturerIds || []);
     } else {
       setForm(emptyForm);
-      setAuthors([]);
+      setAuthorsText("");
+      setInternalLecturerIds([]);
       setCreditedId("");
       setFirstAuthor(false);
       setCorresponding(false);
     }
   }, [editingPaper, open, lecturers]);
 
-  // Internal (faculty) authors are the only candidates for the single credit.
-  const internalAuthors = authors.filter(
-    (a): a is Extract<AuthorEntry, { type: "internal" }> => a.type === "internal"
-  );
+  // Internal (faculty) authors are the only candidates for the single credit —
+  // resolved from the linked id list, not from the author text.
+  const internalAuthors = internalLecturerIds
+    .map((id) => lecturers.find((l) => l.id === id))
+    .filter((l): l is Lecturer => !!l);
+
+  function addInternalLecturer(id: number) {
+    setInternalLecturerIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
+  }
+  function removeInternalLecturer(id: number) {
+    setInternalLecturerIds((ids) => ids.filter((x) => x !== id));
+    if (creditedId === String(id)) setCreditedId("");
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -138,19 +135,19 @@ export function PaperFormAdmin({
       toast.error("Vui lòng nhập đầy đủ tên bài báo và năm công bố.");
       return;
     }
-    
+
     if (!form.venue) {
       toast.error("Vui lòng chọn hoặc nhập mới Hội nghị / Tạp chí.");
       return;
     }
 
-    if (authors.length === 0) {
-      toast.error("Vui lòng thêm ít nhất một tác giả.");
+    if (!authorsText.trim()) {
+      toast.error("Vui lòng nhập danh sách tác giả.");
       return;
     }
 
-    const allAuthors = authors.map((a) => a.name).join(", ");
-    const lecturerIds = internalAuthors.map((a) => a.id);
+    const allAuthors = authorsText.trim();
+    const lecturerIds = internalLecturerIds;
 
     // Only a linked internal author may hold the credit (enforced server-side too).
     const credited = creditedId && lecturerIds.includes(Number(creditedId)) ? Number(creditedId) : null;
@@ -175,7 +172,8 @@ export function PaperFormAdmin({
     onSave(paper);
     onOpenChange(false);
     setForm(emptyForm);
-    setAuthors([]);
+    setAuthorsText("");
+    setInternalLecturerIds([]);
     setCreditedId("");
     setFirstAuthor(false);
     setCorresponding(false);
@@ -197,7 +195,10 @@ export function PaperFormAdmin({
       doi: data.doi || "",
       url: data.url || "",
     });
-    setAuthors(data.authors);
+    // Author text is the verbatim names; the internal links come from the import
+    // matches (alias / suggestion) and stay editable as chips below.
+    setAuthorsText(data.authors.map((a) => a.name).join(", "));
+    setInternalLecturerIds(data.authors.filter((a) => a.type === "internal").map((a) => a.id));
   }
 
   return (
@@ -288,14 +289,38 @@ export function PaperFormAdmin({
             <label className="text-sm font-semibold font-heading">
               Danh sách tác giả <span className="text-destructive">*</span>
             </label>
-            <p className="text-xs text-muted-foreground mb-4">
-              Khuyến khích xếp tác giả theo đúng thứ tự trên bài báo để đảm bảo thống kê chính xác. 
-              Bạn có thể kéo thả hoặc sử dụng phím mũi tên để sắp xếp lại.
+            <p className="text-xs text-muted-foreground mb-2">
+              Nhập tên tác giả <strong>đúng như trong bài báo</strong>, cách nhau bằng dấu phẩy. Không cần thay bằng tên giảng viên.
             </p>
-            <AuthorshipInput
-              lecturers={lecturers}
-              value={authors}
-              onChange={setAuthors}
+            <textarea
+              value={authorsText}
+              onChange={(e) => setAuthorsText(e.target.value)}
+              placeholder="Tien Do, Thanh Duc Ngo, ..."
+              rows={2}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
+            />
+          </div>
+
+          {/* Internal lecturer links — separate from the author text, drives KPI. */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold font-heading">Giảng viên nội bộ (tính KPI)</label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Chọn giảng viên thuộc Khoa là tác giả của bài — dùng để tính KPI, độc lập với tên hiển thị ở trên.
+            </p>
+            {internalAuthors.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {internalAuthors.map((l) => (
+                  <span key={l.id} className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 text-xs px-2 py-0.5">
+                    {l.title}. {l.name}
+                    <button type="button" onClick={() => removeInternalLecturer(l.id)} className="hover:text-destructive cursor-pointer" aria-label="Xoá">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <LecturerCombobox
+              lecturers={lecturers.filter((l) => !internalLecturerIds.includes(l.id))}
+              value={null}
+              onChange={(id) => { if (id != null) addInternalLecturer(id); }}
             />
           </div>
 
