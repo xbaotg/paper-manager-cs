@@ -15,31 +15,43 @@
 //     node scripts/fix-overwritten-authors.mjs --list
 
 import Database from "better-sqlite3";
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-// Auto-locate the DB: DATABASE_FILE env, then the common in-container paths.
-const CANDIDATES = [
+const args = process.argv.slice(2);
+const isApply = args.includes("--apply");
+const isDry = args.includes("--dry");
+
+// Auto-locate the DB by actually trying to OPEN each candidate (existsSync can
+// false-negative on permission errors). DATABASE_FILE wins; then common paths.
+const CANDIDATES = [...new Set([
   process.env.DATABASE_FILE,
   path.join(process.cwd(), "data", "app.db"),
   path.join(process.cwd(), "app.db"),
   "/app/data/app.db",
   "/app/app.db",
-].filter(Boolean);
-const DB_FILE = CANDIDATES.find((p) => existsSync(p));
-if (!DB_FILE) {
-  console.error("Không tìm thấy app.db. Đặt DATABASE_FILE=<đường dẫn>. Đã thử:\n  " + CANDIDATES.join("\n  "));
+].filter(Boolean))];
+
+let db = null;
+let DB_FILE = null;
+const errs = [];
+for (const p of CANDIDATES) {
+  try {
+    db = new Database(p, { readonly: !isApply, fileMustExist: true });
+    DB_FILE = p;
+    break;
+  } catch (e) {
+    errs.push(`  ${p} -> ${e.message}`);
+  }
+}
+if (!db) {
+  console.error("Không mở được app.db. Đặt DATABASE_FILE=<đường dẫn đúng>. Đã thử:\n" + errs.join("\n"));
   process.exit(1);
 }
 console.error(`(DB: ${DB_FILE})`);
 // Mọi học hàm/học vị có thể đã được chèn vào trước tên (kể cả khi học hàm đã đổi từ lúc import).
 const TITLE_RE = /^(GS\.TS|PGS\.TS|TS|ThS|NCS|CN|CĐ|TC|CL|KS)\.\s*/;
 
-const args = process.argv.slice(2);
-const isApply = args.includes("--apply");
-const isDry = args.includes("--dry");
-
-const db = new Database(DB_FILE, { readonly: !isApply });
 const lecturers = db.prepare("SELECT id, title, name FROM lecturers").all();
 const byName = new Map(lecturers.map((l) => [l.name, l])); // tên VN -> giảng viên
 const papers = db.prepare("SELECT id, title, year, authors FROM papers").all();
