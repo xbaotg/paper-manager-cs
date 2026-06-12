@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { hydrateVenues } from "@/lib/venues";
 import { buildLlkhHtml } from "@/lib/llkh-export";
-import { saveMyLlkh, type MyLlkhData } from "@/app/actions/llkh";
+import { saveMyLlkh, saveLlkhForLecturer, type MyLlkhData } from "@/app/actions/llkh";
 import {
   type LlkhProfile,
   type LlkhNgoaiNgu,
@@ -122,7 +122,18 @@ function asciiName(name: string): string {
 
 // ---------- main editor ----------
 
-export function LlkhEditor({ initial }: { initial: MyLlkhData }) {
+export function LlkhEditor({
+  initial,
+  lecturerId,
+  backHref = "/me",
+  backLabel = "Về trang của tôi",
+}: {
+  initial: MyLlkhData;
+  // When set (admin editing another lecturer), saves target that lecturer.
+  lecturerId?: number;
+  backHref?: string;
+  backLabel?: string;
+}) {
   const [P, setP] = useState<LlkhProfile>(initial.profile);
   const [pending, startTransition] = useTransition();
   const { lecturerName, lecturerTitle, papers } = initial;
@@ -133,7 +144,8 @@ export function LlkhEditor({ initial }: { initial: MyLlkhData }) {
 
   function handleSave() {
     startTransition(async () => {
-      const res = await saveMyLlkh(P);
+      const res =
+        lecturerId != null ? await saveLlkhForLecturer(lecturerId, P) : await saveMyLlkh(P);
       if (res.ok) toast.success("Đã lưu thông tin LLKH");
       else toast.error(res.error ?? "Không lưu được");
     });
@@ -172,8 +184,8 @@ export function LlkhEditor({ initial }: { initial: MyLlkhData }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <Link href="/me" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            <ArrowLeft className="size-4" /> Về trang của tôi
+          <Link href={backHref} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+            <ArrowLeft className="size-4" /> {backLabel}
           </Link>
           <h1 className="text-2xl font-semibold font-heading tracking-tight flex items-center gap-2 mt-1">
             <ScrollText className="size-6 text-primary" /> Lý lịch khoa học

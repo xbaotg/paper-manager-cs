@@ -10,8 +10,9 @@ import {
   Users,
   Mail,
   Phone,
+  ScrollText,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -250,6 +251,13 @@ export default function LecturersPage() {
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <div className="flex gap-1 justify-end">
+                        <Link
+                          href={`/admin/lecturers/${lecturer.id}/llkh`}
+                          className={buttonVariants({ variant: "ghost", size: "icon-sm" }) + " cursor-pointer opacity-60 hover:opacity-100 hover:text-primary"}
+                          title="Lý lịch khoa học"
+                        >
+                          <ScrollText className="size-4" />
+                        </Link>
                         <Button
                           variant="ghost"
                           size="icon-sm"

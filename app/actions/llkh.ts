@@ -1,6 +1,6 @@
 "use server";
 
-import { requireLecturer } from "@/lib/dal";
+import { requireLecturer, requireManager } from "@/lib/dal";
 import { getLlkh, saveLlkh } from "@/lib/queries/llkh";
 import { getPapersByLecturer } from "@/lib/queries/papers";
 import { getLecturerById } from "@/lib/queries/lecturers";
@@ -38,6 +38,34 @@ export async function saveMyLlkh(profile: LlkhProfile): Promise<SaveLlkhResult> 
   const user = await requireLecturer();
   try {
     saveLlkh(user.lecturerId!, normalizeLlkh(profile));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Không lưu được." };
+  }
+}
+
+// Manager-only: load any lecturer's LLKH profile + papers (admin export/edit).
+export async function getLlkhForLecturer(lecturerId: number): Promise<MyLlkhData> {
+  await requireManager();
+  const lec = getLecturerById(lecturerId);
+  if (!lec) throw new Error("Không tìm thấy giảng viên.");
+  return {
+    profile: getLlkh(lecturerId),
+    lecturerName: lec.name,
+    lecturerTitle: lec.title ?? "",
+    papers: getPapersByLecturer(lecturerId),
+  };
+}
+
+// Manager-only: persist any lecturer's LLKH profile (admin edit before export).
+export async function saveLlkhForLecturer(
+  lecturerId: number,
+  profile: LlkhProfile
+): Promise<SaveLlkhResult> {
+  await requireManager();
+  try {
+    if (!getLecturerById(lecturerId)) return { ok: false, error: "Không tìm thấy giảng viên." };
+    saveLlkh(lecturerId, normalizeLlkh(profile));
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Không lưu được." };

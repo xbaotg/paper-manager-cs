@@ -1,11 +1,12 @@
-// Builds the full Lý lịch khoa học document (UIT form) as an HTML string, used
-// for both the print/PDF window and the downloadable Word (.doc) file. Pure +
+// Builds the Lý lịch khoa học as an HTML string that mirrors the official UIT /
+// ĐHQG-HCM "Mẫu D03" form (sections I–V, same labels + table layout), used for
+// both the print/PDF window and the downloadable Word (.doc) file. Pure +
 // isomorphic; venue lookups read the in-memory catalog, so the caller should
 // hydrateVenues() first (the editor does). Publications are auto-classified from
 // the papers DB into the form's 2.1–2.4 buckets; everything else comes from the
 // lecturer-filled LlkhProfile.
 
-import { getVenueByCode, getVenueRankShort } from "./venues";
+import { getVenueByCode, getVenueRankShort, isVenueScopus } from "./venues";
 import { countsAsPublication, type Paper } from "./data";
 import type { LlkhProfile } from "./llkh";
 
@@ -59,25 +60,45 @@ export function classifyPapers(papers: Paper[]): Classified {
   return out;
 }
 
-function pubTable(rows: Paper[], extraHead: string): string {
+// One blank cell repeated — used to pad empty form rows so the table keeps its
+// shape (matches how the printed D03 ships with empty ruled rows).
+function blanks(n: number): string {
+  return "<td></td>".repeat(n);
+}
+
+// Publication table for one of the 2.1–2.4 buckets. `citationHead` and `lastHead`
+// vary per bucket; `lastCell(p)` fills the right-hand column (ISI flag for 2.1).
+function pubTable(
+  rows: Paper[],
+  citationHead: string,
+  lastHead: string,
+  lastCell: (p: Paper) => string
+): string {
   const body = rows.length
     ? rows
         .map(
           (p, i) =>
-            `<tr><td class="c">${i + 1}</td><td>${esc(citation(p))}</td><td></td><td></td></tr>`
+            `<tr><td class="c">${i + 1}</td><td>${esc(citation(p))}</td><td></td><td class="c">${esc(
+              lastCell(p)
+            )}</td></tr>`
         )
         .join("")
-    : `<tr><td class="c">—</td><td colspan="3" class="muted">(Chưa có)</td></tr>`;
-  return `<table><thead><tr><th class="c" style="width:5%">TT</th>
-    <th>Tên tác giả, tên bài viết, tên tạp chí/hội nghị, số, trang, năm</th>
-    <th style="width:14%">Sản phẩm đề tài</th><th style="width:16%">${extraHead}</th></tr></thead>
+    : `<tr><td class="c">1</td>${blanks(3)}</tr><tr><td class="c">2</td>${blanks(3)}</tr>`;
+  return `<table><thead><tr>
+    <th class="c" style="width:5%">TT</th>
+    <th>${esc(citationHead)}</th>
+    <th style="width:16%">Sản phẩm của đề tài/dự án<br/>(chỉ ghi mã số)</th>
+    <th style="width:16%">${esc(lastHead)}</th></tr></thead>
     <tbody>${body}</tbody></table>`;
 }
 
+// Generic ruled table: numbered rows; when there are none, render `minRows`
+// empty ruled rows so the form looks like the blank template.
 function rowsTable(
   head: string[],
   widths: string[],
-  rows: string[][]
+  rows: string[][],
+  minRows = 2
 ): string {
   const th = head
     .map((h, i) => `<th style="width:${widths[i] ?? "auto"}">${esc(h)}</th>`)
@@ -89,161 +110,261 @@ function rowsTable(
             `<tr><td class="c">${i + 1}</td>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`
         )
         .join("")
-    : `<tr><td class="c">—</td><td colspan="${head.length - 1}" class="muted">(Chưa có)</td></tr>`;
+    : Array.from(
+        { length: minRows },
+        (_, i) => `<tr><td class="c">${i + 1}</td>${blanks(head.length)}</tr>`
+      ).join("");
   return `<table><thead><tr><th class="c" style="width:5%">TT</th>${th}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+// Foreign-language proficiency table. The D03 form scores each of the four skills
+// on a Tốt / Khá scale, so every skill is a 2-sub-column. We map the lecturer's
+// single stored grade onto whichever sub-column it names (an "x" mark).
+function ngoaiNguTable(P: LlkhProfile): string {
+  const tk = (v: string) => {
+    const s = (v || "").toLowerCase();
+    if (s.includes("tốt") || s === "good") return ["x", ""];
+    if (s.includes("khá") || s.includes("kha")) return ["", "x"];
+    return [v || "", ""]; // unknown grade: drop the raw text in the Tốt column
+  };
+  const body = P.ngoaiNgu.length
+    ? P.ngoaiNgu
+        .map((n, i) => {
+          const cells = [n.nghe, n.noi, n.viet, n.doc]
+            .map((v) => {
+              const [t, k] = tk(v);
+              return `<td class="c">${esc(t)}</td><td class="c">${esc(k)}</td>`;
+            })
+            .join("");
+          return `<tr><td class="c">${i + 1}</td><td>${esc(n.name)}</td>${cells}</tr>`;
+        })
+        .join("")
+    : `<tr><td class="c">1</td>${blanks(9)}</tr>`;
+  return `<table><thead>
+    <tr>
+      <th class="c" rowspan="2" style="width:5%">TT</th>
+      <th rowspan="2" style="width:23%">Tên ngoại ngữ</th>
+      <th class="c" colspan="2">Nghe</th>
+      <th class="c" colspan="2">Nói</th>
+      <th class="c" colspan="2">Viết</th>
+      <th class="c" colspan="2">Đọc hiểu tài liệu</th>
+    </tr>
+    <tr>
+      <th class="c">Tốt</th><th class="c">Khá</th>
+      <th class="c">Tốt</th><th class="c">Khá</th>
+      <th class="c">Tốt</th><th class="c">Khá</th>
+      <th class="c">Tốt</th><th class="c">Khá</th>
+    </tr>
+  </thead><tbody>${body}</tbody></table>`;
+}
+
+// 9. Thời gian công tác — "Thời gian" is a Từ … / Đến … pair.
+function congTacTable(P: LlkhProfile): string {
+  const body = P.congTac.length
+    ? P.congTac
+        .map(
+          (c) =>
+            `<tr><td class="c">${esc(c.from)}</td><td class="c">${esc(c.to)}</td><td>${esc(
+              c.noi
+            )}</td><td>${esc(c.chucVu)}</td></tr>`
+        )
+        .join("")
+    : `<tr>${blanks(4)}</tr><tr>${blanks(4)}</tr>`;
+  return `<table><thead>
+    <tr><th class="c" colspan="2">Thời gian</th><th rowspan="2">Nơi công tác</th><th rowspan="2" style="width:22%">Chức vụ</th></tr>
+    <tr><th class="c" style="width:16%">Từ</th><th class="c" style="width:16%">Đến</th></tr>
+  </thead><tbody>${body}</tbody></table>`;
+}
+
+// 10. Quá trình đào tạo — ships with the four standard levels as ruled rows.
+const STANDARD_BAC = ["Đại học", "Thạc sỹ", "Tiến sỹ", "Tiến sỹ Khoa học"];
+function daoTaoTable(P: LlkhProfile): string {
+  const rows = P.daoTao.length
+    ? P.daoTao.map((d) => [d.bac, d.thoiGian, d.noi, d.nganh, d.luanAn])
+    : STANDARD_BAC.map((b) => [b, "", "", "", ""]);
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${esc(r[0])}</td><td class="c">${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(
+          r[3]
+        )}</td><td>${esc(r[4])}</td></tr>`
+    )
+    .join("");
+  return `<table><thead><tr>
+    <th style="width:16%">Bậc đào tạo</th>
+    <th style="width:12%">Thời gian</th>
+    <th style="width:24%">Nơi đào tạo</th>
+    <th style="width:20%">Chuyên ngành</th>
+    <th>Tên luận án tốt nghiệp</th></tr></thead><tbody>${body}</tbody></table>`;
 }
 
 export function buildLlkhHtml(input: LlkhExportInput): string {
   const { lecturerName, lecturerTitle, profile: P, papers, dateStr } = input;
   const cls = classifyPapers(papers);
+  const fullName = `${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`;
 
-  const fld = (label: string, val: string) =>
-    `<p><b>${esc(label)}</b> ${esc(val) || "&nbsp;"}</p>`;
+  // dotted-leader field: "<b>label</b> value …………"
+  const fld = (label: string, val: string, after = "") =>
+    `<p class="f"><b>${esc(label)}</b> <span class="v">${esc(val)}</span>${
+      after ? ` ${esc(after)}` : ""
+    }</p>`;
 
-  const ngoaiNgu = rowsTable(
-    ["Tên ngoại ngữ", "Nghe", "Nói", "Viết", "Đọc hiểu"],
-    ["32%", "16%", "16%", "16%", "15%"],
-    P.ngoaiNgu.map((n) => [n.name, n.nghe, n.noi, n.viet, n.doc])
-  );
-  const congTac = rowsTable(
-    ["Từ", "Đến", "Nơi công tác", "Chức vụ"],
-    ["14%", "14%", "45%", "22%"],
-    P.congTac.map((c) => [c.from, c.to, c.noi, c.chucVu])
-  );
-  const daoTao = rowsTable(
-    ["Bậc đào tạo", "Thời gian", "Nơi đào tạo", "Chuyên ngành", "Tên luận án"],
-    ["14%", "12%", "24%", "20%", "25%"],
-    P.daoTao.map((d) => [d.bac, d.thoiGian, d.noi, d.nganh, d.luanAn])
-  );
   const deTai = rowsTable(
-    ["Tên đề tài/dự án", "Mã số & cấp QL", "Thời gian", "Kinh phí", "Vai trò", "Ngày nghiệm thu", "Kết quả"],
-    ["28%", "14%", "9%", "8%", "10%", "12%", "9%"],
+    ["Tên đề tài/dự án", "Mã số & cấp quản lý", "Thời gian thực hiện", "Kinh phí (triệu đồng)", "Chủ nhiệm/Tham gia", "Ngày nghiệm thu", "Kết quả"],
+    ["26%", "13%", "11%", "10%", "11%", "11%", "8%"],
     P.deTai.map((d) => [d.ten, d.maSo, d.thoiGian, d.kinhPhi, d.vaiTro, d.ngayNghiemThu, d.ketQua])
   );
   const huongDan = rowsTable(
-    ["Tên SV/HVCH/NCS", "Tên luận án", "Năm TN", "Bậc đào tạo", "Sản phẩm đề tài"],
-    ["22%", "32%", "10%", "16%", "15%"],
+    ["Tên SV, HVCH, NCS", "Tên luận án", "Năm tốt nghiệp", "Bậc đào tạo", "Sản phẩm của đề tài/dự án (chỉ ghi mã số)"],
+    ["20%", "30%", "11%", "14%", "20%"],
     P.huongDan.map((h) => [h.ten, h.luanAn, h.namTN, h.bac, h.sanPham])
   );
   const sach = (rows: typeof P.sachQuocTe) =>
     rowsTable(
-      ["Tên sách", "Sản phẩm đề tài", "Nhà XB", "Năm XB", "Tác giả/đồng TG", "Bút danh"],
-      ["30%", "14%", "16%", "10%", "16%", "9%"],
+      ["Tên sách", "Sản phẩm của đề tài/ dự án (chỉ ghi mã số)", "Nhà xuất bản", "Năm xuất bản", "Tác giả/ đồng tác giả", "Bút danh"],
+      ["28%", "16%", "15%", "10%", "16%", "10%"],
       rows.map((s) => [s.ten, s.sanPham, s.nhaXB, s.namXB, s.tacGia, s.butDanh])
     );
   const giaiThuong = rowsTable(
-    ["Hình thức & nội dung giải thưởng", "Năm tặng thưởng"],
-    ["75%", "20%"],
+    ["Hình thức, nội dung giải thưởng", "Năm tặng thưởng"],
+    ["73%", "22%"],
     P.giaiThuong.map((g) => [g.ten, g.nam])
   );
 
+  const journalCiteHead =
+    "Tên tác giả, tên bài viết, tên tạp chí và số của tạp chí, trang đăng bài viết, năm xuất bản";
+  const confCiteHead =
+    "Tên tác giả, tên bài viết, tên hội nghị, trang đăng bài viết, năm xuất bản";
+
   const body = `
+  <table class="head">
+    <tr>
+      <td style="width:62%;vertical-align:top">
+        <p class="org">ĐẠI HỌC QUỐC GIA TP. HCM</p>
+        <p class="org b">TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN</p>
+      </td>
+      <td class="c" style="vertical-align:top">
+        <div class="photo">Ảnh<br/>4x6</div>
+      </td>
+    </tr>
+  </table>
   <div class="center">
-    <p class="org">ĐẠI HỌC QUỐC GIA TP. HỒ CHÍ MINH</p>
-    <p class="org">TRƯỜNG ĐẠI HỌC CÔNG NGHỆ THÔNG TIN</p>
     <h1>LÝ LỊCH KHOA HỌC</h1>
     <p class="note">(Thông tin trong 5 năm gần nhất và có liên quan trực tiếp đến đề tài/dự án đăng ký)</p>
   </div>
 
   <h2>I. THÔNG TIN CHUNG</h2>
-  ${fld("1. Họ và tên:", `${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`)}
-  ${fld("2. Ngày sinh:", P.dob)}
-  ${fld("3. Nam/Nữ:", P.gender)}
-  <p><b>4. Nơi đang công tác:</b></p>
+  ${fld("1. Họ và tên:", fullName)}
+  <p class="f"><b>2. Ngày sinh:</b> <span class="v">${esc(P.dob)}</span>
+     &nbsp;&nbsp;&nbsp;&nbsp;<b>3. Nam/nữ:</b> <span class="v">${esc(P.gender)}</span></p>
+  <p class="f"><b>4. Nơi đang công tác:</b></p>
   <div class="indent">
-    ${fld("Trường/Viện:", P.truong)}
-    ${fld("Phòng/Khoa:", P.khoa)}
+    ${fld("Trường/viện:", P.truong)}
+    ${fld("Phòng/ Khoa:", P.khoa)}
     ${fld("Bộ môn:", P.boMon)}
     ${fld("Phòng thí nghiệm:", P.phongThiNghiem)}
     ${fld("Chức vụ:", P.chucVu)}
   </div>
-  ${fld("5. Học vị:", `${P.hocVi}${P.hocViYear ? `   — năm đạt: ${P.hocViYear}` : ""}`)}
-  ${fld("6. Học hàm:", `${P.hocHam}${P.hocHamYear ? `   — năm phong: ${P.hocHamYear}` : ""}`)}
-  <p><b>7. Liên lạc:</b></p>
-  <table><thead><tr><th class="c" style="width:5%">TT</th><th style="width:19%"></th><th>Cơ quan</th><th>Cá nhân</th></tr></thead>
-  <tbody>
-    <tr><td class="c">1</td><td>Địa chỉ</td><td>${esc(P.diaChiCoQuan)}</td><td>${esc(P.diaChiCaNhan)}</td></tr>
-    <tr><td class="c">2</td><td>Điện thoại / Fax</td><td>${esc([P.dienThoaiCoQuan, P.faxCoQuan].filter(Boolean).join(" / "))}</td><td>${esc(P.dienThoaiCaNhan)}</td></tr>
-    <tr><td class="c">3</td><td>Email</td><td>${esc(P.email)}</td><td></td></tr>
-  </tbody></table>
-  <p><b>8. Trình độ ngoại ngữ:</b></p>
-  ${ngoaiNgu}
-  <p><b>9. Thời gian công tác:</b></p>
-  ${congTac}
-  <p><b>10. Quá trình đào tạo:</b></p>
-  ${daoTao}
-  <p><b>11. Các lĩnh vực chuyên môn và hướng nghiên cứu:</b></p>
+  <p class="f"><b>5. Học vị:</b> <span class="v">${esc(P.hocVi)}</span>
+     &nbsp;&nbsp;&nbsp;&nbsp;năm đạt: <span class="v">${esc(P.hocViYear)}</span></p>
+  <p class="f"><b>6. Học hàm:</b> <span class="v">${esc(P.hocHam)}</span>
+     &nbsp;&nbsp;&nbsp;&nbsp;năm phong: <span class="v">${esc(P.hocHamYear)}</span></p>
+  <p class="f"><b>7. Liên lạc:</b></p>
+  <table>
+    <thead><tr><th class="c" style="width:5%">TT</th><th style="width:23%"></th><th>Cơ quan</th><th>Cá nhân</th></tr></thead>
+    <tbody>
+      <tr><td class="c">1</td><td>Địa chỉ</td><td>${esc(P.diaChiCoQuan)}</td><td>${esc(P.diaChiCaNhan)}</td></tr>
+      <tr><td class="c">2</td><td>Điện thoại/ fax</td><td>${esc([P.dienThoaiCoQuan, P.faxCoQuan].filter(Boolean).join(" / "))}</td><td>${esc(P.dienThoaiCaNhan)}</td></tr>
+      <tr><td class="c">3</td><td>Email</td><td>${esc(P.email)}</td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="f"><b>8. Trình độ ngoại ngữ:</b></p>
+  ${ngoaiNguTable(P)}
+  <p class="f"><b>9. Thời gian công tác:</b></p>
+  ${congTacTable(P)}
+  <p class="f"><b>10. Quá trình đào tạo:</b></p>
+  ${daoTaoTable(P)}
+  <p class="f"><b>11. Các lĩnh vực chuyên môn và hướng nghiên cứu:</b></p>
   <div class="indent">
-    ${fld("11.1 Lĩnh vực chuyên môn:", P.linhVucChuyenMon)}
-    <p><b>11.2 Hướng nghiên cứu:</b></p>
+    ${fld("Lĩnh vực chuyên môn:", P.linhVucChuyenMon)}
+    <p class="f"><b>Hướng nghiên cứu:</b></p>
     <div class="pre">${esc(P.huongNghienCuu)}</div>
   </div>
 
   <h2>II. NGHIÊN CỨU VÀ GIẢNG DẠY</h2>
-  <p><b>1. Đề tài/dự án</b></p>
+  <p class="f"><b>1. Đề tài/dự án</b></p>
   ${deTai}
-  <p><b>2. Hướng dẫn sinh viên, học viên cao học, nghiên cứu sinh</b></p>
+  <p class="f"><b>2. Hướng dẫn sinh viên, học viên cao học, nghiên cứu sinh</b></p>
   ${huongDan}
 
   <h2>III. CÁC CÔNG TRÌNH ĐÃ CÔNG BỐ</h2>
-  <p><b>1. Sách</b></p>
+  <p class="f"><b>1. Sách</b></p>
   <p class="sub">1.1 Sách xuất bản Quốc tế</p>
   ${sach(P.sachQuocTe)}
-  <p class="sub">1.2 Sách xuất bản trong nước</p>
+  <p class="sub">1.2. Sách xuất bản trong nước</p>
   ${sach(P.sachTrongNuoc)}
-  <p><b>2. Các bài báo</b></p>
-  <p class="sub">2.1 Đăng trên tạp chí Quốc tế</p>
-  ${pubTable(cls.journalsQT, "ISSN (ISI?) / IF")}
-  <p class="sub">2.2 Đăng trên tạp chí trong nước</p>
-  ${pubTable(cls.journalsTN, "ISSN / Ghi chú")}
-  <p class="sub">2.3 Đăng trên kỷ yếu Hội nghị Quốc tế</p>
-  ${pubTable(cls.confQT, "ISBN / Ghi chú")}
-  <p class="sub">2.4 Đăng trên kỷ yếu Hội nghị trong nước</p>
-  ${pubTable(cls.confTN, "ISBN / Ghi chú")}
+  <p class="f"><b>2. Các bài báo</b></p>
+  <p class="sub">2.1. Đăng trên tạp chí Quốc tế</p>
+  ${pubTable(cls.journalsQT, journalCiteHead, "Tạp chí thuộc danh mục ISI hay không", (p) => (isVenueScopus(p.venue) ? "Có" : ""))}
+  <p class="sub">2.2. Đăng trên tạp chí trong nước</p>
+  ${pubTable(cls.journalsTN, journalCiteHead, "Ghi chú", () => "")}
+  <p class="sub">2.3. Đăng trên kỷ yếu Hội nghị Quốc tế</p>
+  ${pubTable(cls.confQT, confCiteHead, "Thuộc danh mục ISI/Scopus hay không", (p) => (isVenueScopus(p.venue) ? "Có" : ""))}
+  <p class="sub">2.4. Đăng trên kỷ yếu Hội nghị trong nước</p>
+  ${pubTable(cls.confTN, confCiteHead, "Ghi chú", () => "")}
 
   <h2>IV. CÁC GIẢI THƯỞNG</h2>
-  <p><b>1. Các giải thưởng Khoa học và Công nghệ</b></p>
+  <p class="f"><b>1. Các giải thưởng Khoa học và Công nghệ</b></p>
   ${giaiThuong}
-  <p><b>2. Bằng phát minh, sáng chế (patent)</b></p>
+  <p class="f"><b>2. Bằng phát minh, sáng chế (patent)</b></p>
   <div class="pre">${esc(P.patent)}</div>
-  <p><b>3. Bằng giải pháp hữu ích</b></p>
+  <p class="f"><b>3. Bằng giải pháp hữu ích</b></p>
   <div class="pre">${esc(P.giaiPhapHuuIch)}</div>
 
   <h2>V. THÔNG TIN KHÁC</h2>
   <div class="pre">${esc(P.thongTinKhac)}</div>
 
   <table class="sign"><tr>
-    <td></td>
+    <td style="width:50%"></td>
     <td class="center">
-      <p>${dateStr ? `Ngày ${esc(dateStr)}` : "Ngày ….. tháng ….. năm ….."}</p>
+      <p class="datept">${dateStr ? `TP. Hồ Chí Minh, ngày ${esc(dateStr)}` : "TP. Hồ Chí Minh, ngày … tháng … năm …"}</p>
       <p><b>Người khai</b></p>
-      <p class="muted">(Ký và ghi rõ họ tên)</p>
+      <p class="muted">(Họ tên và chữ ký)</p>
       <br/><br/><br/>
-      <p><b>${esc(`${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`)}</b></p>
+      <p><b>${esc(fullName)}</b></p>
     </td>
   </tr></table>`;
 
   const styles = `
-    body{font-family:"Times New Roman",serif;font-size:13px;color:#000;line-height:1.45;max-width:900px;margin:24px auto;padding:0 28px}
+    @page WordSection1 { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 3cm; }
+    div.WordSection1 { page: WordSection1; }
+    body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4}
     .center{text-align:center}
-    .org{margin:0;font-weight:bold;font-size:13px}
-    h1{font-size:18px;margin:10px 0 2px}
-    .note{font-style:italic;margin:0 0 14px}
-    h2{font-size:14px;margin:18px 0 8px;border-bottom:1px solid #000;padding-bottom:2px}
+    table.head{width:100%;border-collapse:collapse;margin:0 0 6px}
+    table.head td{border:none;padding:0}
+    .org{margin:0;font-size:13pt}
+    .org.b{font-weight:bold;text-transform:uppercase}
+    .photo{display:inline-block;border:1px solid #000;width:2.4cm;height:3.2cm;line-height:1.2;font-size:11pt;text-align:center;padding-top:1cm;box-sizing:border-box}
+    h1{font-size:16pt;font-weight:bold;margin:6px 0 2px;text-transform:uppercase}
+    .note{font-style:italic;font-size:12pt;margin:0 0 12px}
+    h2{font-size:13pt;font-weight:bold;margin:16px 0 6px;text-transform:uppercase}
     p{margin:4px 0}
-    .indent{margin-left:20px}
-    .sub{font-style:italic;margin:8px 0 4px}
-    .pre{white-space:pre-wrap;margin:2px 0 6px;min-height:16px}
-    table{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:12px}
-    th,td{border:1px solid #444;padding:4px 6px;vertical-align:top;text-align:left}
-    th{background:#f0f0f0;font-weight:bold}
+    p.f{margin:3px 0}
+    .v{}
+    .indent{margin-left:24px}
+    .sub{font-style:italic;font-weight:bold;margin:8px 0 4px}
+    .pre{white-space:pre-wrap;margin:2px 0 6px;min-height:20px;border:1px solid #000;padding:6px}
+    table{width:100%;border-collapse:collapse;margin:4px 0 12px;font-size:12pt}
+    th,td{border:1px solid #000;padding:4px 6px;vertical-align:top;text-align:left}
+    th{font-weight:bold;text-align:center}
     td.c,th.c{text-align:center}
-    .muted{color:#666;font-style:italic}
+    .muted{font-style:italic}
+    .datept{font-style:italic;margin-bottom:2px}
     table.sign{border:none;margin-top:24px}
     table.sign td{border:none}
     @media print{body{margin:0}}`;
 
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <title>LLKH — ${esc(lecturerName)}</title><style>${styles}</style></head>
-<body>${body}</body></html>`;
+<body><div class="WordSection1">${body}</div></body></html>`;
 }
