@@ -167,6 +167,9 @@ export default function AdminDashboard() {
   const lecturerStats = useMemo(() => {
     const stats: Record<number, { count: number }> = {};
     filteredPapers.forEach((p) => {
+      // Leaderboard reflects real output — accepted/published only, not the
+      // in-review pipeline.
+      if (!countsAsPublication(p.submissionStatus)) return;
       (p.lecturerIds || []).forEach((lid) => {
         if (!stats[lid]) stats[lid] = { count: 0 };
         stats[lid].count += 1;

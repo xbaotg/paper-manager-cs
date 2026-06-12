@@ -322,7 +322,7 @@ export function PublicationsTable({
                                 <Badge
                                   key={lid}
                                   variant="secondary"
-                                  className="bg-blue-500/10 text-blue-600 border border-blue-500/20 text-xs"
+                                  className="max-w-full h-auto whitespace-normal break-words leading-tight py-0.5 bg-blue-500/10 text-blue-600 border border-blue-500/20 text-xs"
                                 >
                                   {l.name}
                                 </Badge>

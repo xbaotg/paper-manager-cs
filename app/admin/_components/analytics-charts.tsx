@@ -39,6 +39,8 @@ export function GrowthChart({ papers }: ChartProps) {
   const data = useMemo(() => {
     const counts: Record<number, number> = {};
     papers.forEach((p) => {
+      // Real output only: accepted/published papers, not the pending pipeline.
+      if (!countsAsPublication(p.submissionStatus)) return;
       counts[p.year] = (counts[p.year] || 0) + 1;
     });
 
@@ -102,6 +104,8 @@ export function RankingChart({ papers }: ChartProps) {
     };
 
     papers.forEach((p) => {
+      // Real output only: accepted/published papers, not the pending pipeline.
+      if (!countsAsPublication(p.submissionStatus)) return;
       const bucket = getVenueRankBucket(p.venue);
       counts[bucket] += 1;
     });
@@ -157,6 +161,8 @@ export function VenueTypePieChart({ papers }: ChartProps) {
     let other = 0;
 
     papers.forEach((p) => {
+      // Real output only: accepted/published papers, not the pending pipeline.
+      if (!countsAsPublication(p.submissionStatus)) return;
       const v = getVenueByCode(p.venue);
       if (!v) {
         other++;
@@ -416,18 +422,22 @@ export function LecturerKpiBars({
   );
 }
 
-// Top venues by paper count, with Scopus share + rank bucket.
+// Top venues by accepted-paper count, with Scopus share + rank. Only
+// accepted/published papers are counted (the pending pipeline is excluded) so
+// every column reflects real output, not submissions in review.
 export function TopVenues({ papers }: ChartProps) {
   const rows = useMemo(() => {
     const map = new Map<string, { code: string; total: number; scopus: number; q1: number }>();
     papers.forEach((p) => {
       if (!p.venue) return;
+      if (!countsAsPublication(p.submissionStatus)) return;
       const r = map.get(p.venue) ?? { code: p.venue, total: 0, scopus: 0, q1: 0 };
       r.total += 1;
-      const counted = countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue);
-      if (counted) r.scopus += 1;
-      const isQ1 = p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
-      if (counted && isQ1) r.q1 += 1;
+      if (isVenueScopus(p.venue)) {
+        r.scopus += 1;
+        const isQ1 = p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
+        if (isQ1) r.q1 += 1;
+      }
       map.set(p.venue, r);
     });
     return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 8);
@@ -442,7 +452,7 @@ export function TopVenues({ papers }: ChartProps) {
         <thead>
           <tr className="text-xs text-muted-foreground border-b border-border">
             <th className="text-left font-medium py-2">Tạp chí / Hội nghị</th>
-            <th className="text-center font-medium py-2" title="Tổng số bài gửi đến nơi này (mọi trạng thái)">Tổng</th>
+            <th className="text-center font-medium py-2" title="Số bài đã được chấp nhận/xuất bản tại nơi này">Tổng</th>
             <th className="text-center font-medium py-2" title="Số bài đã chấp nhận/xuất bản thuộc danh mục Scopus">Scopus</th>
             <th className="text-center font-medium py-2" title="Trong số bài Scopus, số bài hạng Q1">Q1</th>
             <th className="text-right font-medium py-2 pl-3" title="Xếp hạng của nơi công bố (CORE A*/A/B/C hoặc Scimago Q1–Q4)">Hạng</th>
@@ -471,9 +481,10 @@ export function TopVenues({ papers }: ChartProps) {
         </tbody>
       </table>
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-        <span className="font-medium">Tổng</span>: tất cả bài gửi tới nơi này ·{" "}
-        <span className="font-medium">Scopus</span>/<span className="font-medium">Q1</span>: chỉ tính bài đã được chấp nhận ·{" "}
-        <span className="font-medium">Hạng</span>: xếp hạng của tạp chí/hội nghị (A*/A/B/C hoặc Q1–Q4).
+        Chỉ tính bài <span className="font-medium">đã được chấp nhận/xuất bản</span> (bỏ qua bài đang chờ phản biện). ·{" "}
+        <span className="font-medium">Tổng</span>: số bài tại nơi này ·{" "}
+        <span className="font-medium">Scopus</span>/<span className="font-medium">Q1</span>: trong đó thuộc Scopus / hạng Q1 ·{" "}
+        <span className="font-medium">Hạng</span>: xếp hạng nơi công bố (A*/A/B/C hoặc Q1–Q4).
       </p>
     </div>
   );
