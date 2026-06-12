@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, FileText, ExternalLink, FilterX, ArrowUp, ArrowDown, GraduationCap, ScrollText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/select";
 import { PaperFormAdmin } from "@/app/admin/_components/paper-form-admin";
 import { ScholarImportDialog } from "@/app/_components/scholar-import-dialog";
-import { LlkhExportDialog } from "@/app/_components/llkh-export-dialog";
 import { ConfirmDialog } from "@/app/admin/_components/confirm-dialog";
 import { addPaperServer, updatePaperServer, deletePaperServer } from "@/app/actions";
 import { getVenueRankBucket } from "@/lib/venues";
@@ -51,11 +50,7 @@ export function MeDashboard({
   const [papers, setPapers] = useState<Paper[]>(initialPapers);
   const [formOpen, setFormOpen] = useState(false);
   const [scholarOpen, setScholarOpen] = useState(false);
-  const [llkhOpen, setLlkhOpen] = useState(false);
   const [editing, setEditing] = useState<Paper | null>(null);
-
-  // This lecturer's academic title (for the LLKH header), resolved from the roster.
-  const myTitle = lecturers.find((l) => l.id === lecturerId)?.title;
   const [deleteTarget, setDeleteTarget] = useState<Paper | null>(null);
   const [filterStartYear, setFilterStartYear] = useState<string>("all");
   const [filterEndYear, setFilterEndYear] = useState<string>("all");
@@ -138,13 +133,12 @@ export function MeDashboard({
           <p className="text-sm text-muted-foreground mt-1">{lecturerName}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setLlkhOpen(true)}
-            className="cursor-pointer gap-1.5"
+          <Link
+            href="/me/llkh"
+            className={`${buttonVariants({ variant: "outline" })} cursor-pointer gap-1.5`}
           >
-            <ScrollText className="size-4" /> Xuất LLKH
-          </Button>
+            <ScrollText className="size-4" /> Lý lịch khoa học
+          </Link>
           <Button
             variant="outline"
             onClick={() => setScholarOpen(true)}
@@ -317,14 +311,6 @@ export function MeDashboard({
         onOpenChange={setScholarOpen}
         lecturers={lecturers}
         onImported={(imported) => { setPapers(mine(imported)); notifyKpi(); }}
-      />
-
-      <LlkhExportDialog
-        open={llkhOpen}
-        onOpenChange={setLlkhOpen}
-        lecturerName={lecturerName}
-        lecturerTitle={myTitle}
-        papers={papers}
       />
 
       <ConfirmDialog

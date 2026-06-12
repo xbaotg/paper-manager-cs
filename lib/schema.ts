@@ -154,4 +154,14 @@ CREATE TABLE IF NOT EXISTS development_progress (
   recorded_at    TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE (development_id, year, quarter)
 );
+
+-- Extra Lý lịch khoa học (scientific CV) fields a lecturer fills in to round out
+-- the export — personal info, education, work history, projects, supervision,
+-- books, awards. Stored as one JSON blob (the form is large + mostly free-form
+-- repeating rows); publications are still derived from the papers table.
+CREATE TABLE IF NOT EXISTS lecturer_llkh (
+  lecturer_id INTEGER PRIMARY KEY REFERENCES lecturers(id) ON DELETE CASCADE,
+  data_json   TEXT NOT NULL DEFAULT '{}',
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `;
