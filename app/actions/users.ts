@@ -13,6 +13,7 @@ import {
   setUserActive,
   setUserAdmin,
   updateUserPassword,
+  updateUsername,
   deleteUser,
   countActiveManagers,
   type UserListItem,
@@ -134,6 +135,31 @@ export async function generateLecturerAccountsAction(): Promise<GenerateAccounts
 
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot(), created, skipped };
+}
+
+// Rename a login (manager-only). The session is keyed by user id, not username,
+// so renaming never logs anyone out — including the manager renaming their own.
+export async function updateUsernameAction(id: number, newUsername: string): Promise<ActionResult> {
+  await requireManager();
+  const username = newUsername.trim();
+  const target = getUserById(id);
+  if (!target) return { ok: false, error: "Tài khoản không tồn tại." };
+  if (!username) return { ok: false, error: "Tên đăng nhập không được để trống." };
+  if (/\s/.test(username)) return { ok: false, error: "Tên đăng nhập không được chứa khoảng trắng." };
+  if (username.length < 3) return { ok: false, error: "Tên đăng nhập tối thiểu 3 ký tự." };
+  if (username === target.username) return { ok: true, data: snapshot() }; // no change
+  // Case-insensitive uniqueness so "Thanh" / "thanh" can't both exist.
+  const taken = listUsers().some(
+    (u) => u.id !== id && u.username.toLowerCase() === username.toLowerCase()
+  );
+  if (taken) return { ok: false, error: "Tên đăng nhập đã tồn tại." };
+  try {
+    updateUsername(id, username);
+  } catch {
+    return { ok: false, error: "Không đổi được tên đăng nhập (có thể đã tồn tại)." };
+  }
+  revalidatePath("/admin/users");
+  return { ok: true, data: snapshot() };
 }
 
 export async function resetPasswordAction(id: number, newPassword: string): Promise<ActionResult> {

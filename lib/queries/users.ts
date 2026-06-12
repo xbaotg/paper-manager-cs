@@ -113,6 +113,12 @@ export function updateUserPassword(id: number, passwordHash: string): void {
   getDb().prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, id);
 }
 
+// Rename a login. Uniqueness is validated in the action layer; the column's
+// UNIQUE constraint is the last line of defence (throws -> caught by caller).
+export function updateUsername(id: number, username: string): void {
+  getDb().prepare("UPDATE users SET username = ? WHERE id = ?").run(username, id);
+}
+
 export function deleteUser(id: number): void {
   getDb().prepare("DELETE FROM users WHERE id = ?").run(id);
 }

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { UserPlus, KeyRound, Trash2, ShieldCheck, ShieldPlus, ShieldMinus, GraduationCap, Power, Building2, Sparkles, Copy } from "lucide-react";
+import { UserPlus, KeyRound, Trash2, ShieldCheck, ShieldPlus, ShieldMinus, GraduationCap, Power, Building2, Sparkles, Copy, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import {
   createUserAction,
   resetPasswordAction,
+  updateUsernameAction,
   setUserActiveAction,
   setUserAdminAction,
   deleteUserAction,
@@ -72,6 +73,10 @@ export function UsersManager({
   // reset password dialog
   const [resetTarget, setResetTarget] = useState<UserItem | null>(null);
   const [newPassword, setNewPassword] = useState("");
+
+  // rename (change login) dialog
+  const [renameTarget, setRenameTarget] = useState<UserItem | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // delete confirm
   const [deleteTarget, setDeleteTarget] = useState<UserItem | null>(null);
@@ -125,6 +130,21 @@ export function UsersManager({
         toast.success(`Đã đặt lại mật khẩu cho ${resetTarget.username}`);
         setResetTarget(null);
         setNewPassword("");
+      } else {
+        toast.error(res.error ?? "Có lỗi xảy ra");
+      }
+    });
+  }
+
+  function handleRename() {
+    if (!renameTarget) return;
+    startTransition(async () => {
+      const res = await updateUsernameAction(renameTarget.id, renameValue);
+      if (res.ok) {
+        applySnapshot(res.data);
+        toast.success("Đã đổi tên đăng nhập");
+        setRenameTarget(null);
+        setRenameValue("");
       } else {
         toast.error(res.error ?? "Có lỗi xảy ra");
       }
@@ -279,6 +299,15 @@ export function UsersManager({
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      title="Đổi tên đăng nhập"
+                      className="cursor-pointer"
+                      onClick={() => { setRenameTarget(u); setRenameValue(u.username); }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       title="Đặt lại mật khẩu"
                       className="cursor-pointer"
                       onClick={() => setResetTarget(u)}
@@ -407,6 +436,34 @@ export function UsersManager({
             <Button onClick={handleCreate} disabled={pending} className="cursor-pointer">
               {pending ? "Đang tạo..." : "Tạo tài khoản"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename (change login) dialog */}
+      <Dialog open={!!renameTarget} onOpenChange={(o) => { if (!o) { setRenameTarget(null); setRenameValue(""); } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Đổi tên đăng nhập</DialogTitle>
+            <DialogDescription>
+              {renameTarget?.lecturerName ? `Giảng viên: ${renameTarget.lecturerName} · ` : ""}
+              Hiện tại: {renameTarget?.username}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-1.5">
+            <label className="text-sm font-medium">Tên đăng nhập mới</label>
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="vd: thanhnd"
+              autoComplete="off"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleRename(); } }}
+            />
+            <p className="text-[11px] text-muted-foreground">Không dấu, không khoảng trắng, tối thiểu 3 ký tự. GV đăng nhập bằng tên mới ngay sau khi lưu.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTarget(null)} className="cursor-pointer">Huỷ</Button>
+            <Button onClick={handleRename} disabled={pending} className="cursor-pointer">Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
