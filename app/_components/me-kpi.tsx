@@ -59,6 +59,17 @@ export function MeKpi({ initial }: { initial: MyKpiData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod?.id]);
 
+  // The paper dashboard below dispatches "me-kpi:refresh" after add/edit/delete.
+  // Re-fetch the current period so the Scopus/Q1 actuals update live (no F5).
+  useEffect(() => {
+    const handler = () => {
+      startTransition(async () => setData(await getMyKpi(selectedPeriodId ?? undefined)));
+    };
+    window.addEventListener("me-kpi:refresh", handler);
+    return () => window.removeEventListener("me-kpi:refresh", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPeriodId]);
+
   if (periods.length === 0) {
     return (
       <Card>

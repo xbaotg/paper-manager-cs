@@ -379,6 +379,20 @@ export function PaperFormAdmin({
               </label>
             </div>
 
+            {/* The single-credit person is neither first nor corresponding author.
+                Per the dept rule, a paper with co-authors outside the University
+                only counts when the faculty member is first/corresponding — warn
+                so this isn't silently credited when it shouldn't be. */}
+            {(creditedId !== "" || internalAuthors.length === 1) && !firstAuthor && !corresponding && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs text-amber-800 flex items-start gap-1.5">
+                <AlertTriangle className="size-4 mt-0.5 shrink-0 text-amber-600" />
+                <span>
+                  Người được tính KPI chưa đánh dấu là <strong>tác giả chính</strong> hoặc <strong>tác giả liên hệ</strong>.
+                  Theo quy định, nếu bài có đồng tác giả ngoài Trường thì <strong>chỉ được tính khi là tác giả chính/liên hệ</strong> — vui lòng kiểm tra lại.
+                </span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Scopus (theo venue)</label>
