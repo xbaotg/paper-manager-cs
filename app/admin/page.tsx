@@ -48,7 +48,7 @@ import {
 } from "./_components/analytics-charts";
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
 import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission, countsAsPublication } from "@/lib/data";
-import { getVenueRankBucket, isVenueQ1, isVenueScopus } from "@/lib/venues";
+import { getVenueRankBucket, isVenueQ1, isVenueScopus, hydrateVenues } from "@/lib/venues";
 import { isCreditedTo } from "@/lib/kpi";
 import { getDatabase } from "@/app/actions";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
@@ -124,7 +124,11 @@ export default function AdminDashboard() {
   }, [activeYear]);
 
   useEffect(() => {
-    getDatabase().then(db => {
+    // Hydrate the venue catalog from the DB BEFORE first paint: every client-side
+    // Scopus/Q1/rank stat (cards, charts, TopVenues) reads the in-memory VENUES
+    // list, which otherwise holds only the stale build-time seed (wrong Scopus
+    // flags) and would undercount vs the server KPI chart.
+    Promise.all([getDatabase(), hydrateVenues()]).then(([db]) => {
       setPapers(db.papers);
       setLecturers(db.lecturers);
       setLoaded(true);

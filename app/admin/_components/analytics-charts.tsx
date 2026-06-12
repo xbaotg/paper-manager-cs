@@ -17,7 +17,7 @@ import {
   Legend,
 } from "recharts";
 import { type Paper, type SubmissionStatus, SUBMISSION_STATUS_LABEL, countsAsPublication } from "@/lib/data";
-import { getVenueRankBucket, getVenueByCode, isVenueQ1, isVenueScopus } from "@/lib/venues";
+import { getVenueRankBucket, getVenueRankShort, getVenueByCode, isVenueQ1, isVenueScopus } from "@/lib/venues";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#64748b", "#8b5cf6", "#ec4899"];
 
@@ -442,27 +442,39 @@ export function TopVenues({ papers }: ChartProps) {
         <thead>
           <tr className="text-xs text-muted-foreground border-b border-border">
             <th className="text-left font-medium py-2">Tạp chí / Hội nghị</th>
-            <th className="text-center font-medium py-2">Tổng</th>
-            <th className="text-center font-medium py-2">Scopus</th>
-            <th className="text-center font-medium py-2">Q1</th>
-            <th className="text-left font-medium py-2 pl-3">Hạng</th>
+            <th className="text-center font-medium py-2" title="Tổng số bài gửi đến nơi này (mọi trạng thái)">Tổng</th>
+            <th className="text-center font-medium py-2" title="Số bài đã chấp nhận/xuất bản thuộc danh mục Scopus">Scopus</th>
+            <th className="text-center font-medium py-2" title="Trong số bài Scopus, số bài hạng Q1">Q1</th>
+            <th className="text-right font-medium py-2 pl-3" title="Xếp hạng của nơi công bố (CORE A*/A/B/C hoặc Scimago Q1–Q4)">Hạng</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => {
-            const bucket = getVenueRankBucket(r.code);
+            const rank = getVenueRankShort(r.code).toUpperCase();
+            const venue = getVenueByCode(r.code);
             return (
               <tr key={r.code} className="border-b border-border/50 last:border-0">
-                <td className="py-2 font-medium">{r.code}</td>
+                <td className="py-2 font-medium" title={venue?.nameEn ?? r.code}>{r.code}</td>
                 <td className="py-2 text-center">{r.total}</td>
                 <td className="py-2 text-center text-blue-600">{r.scopus}</td>
                 <td className="py-2 text-center text-green-600 font-semibold">{r.q1}</td>
-                <td className="py-2 pl-3 text-xs text-muted-foreground">{bucket.split(" ")[0]}</td>
+                <td className="py-2 pl-3 text-right">
+                  {rank ? (
+                    <span className="inline-block rounded bg-muted px-1.5 py-0.5 text-xs font-semibold">{rank}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Chưa xếp hạng</span>
+                  )}
+                </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+        <span className="font-medium">Tổng</span>: tất cả bài gửi tới nơi này ·{" "}
+        <span className="font-medium">Scopus</span>/<span className="font-medium">Q1</span>: chỉ tính bài đã được chấp nhận ·{" "}
+        <span className="font-medium">Hạng</span>: xếp hạng của tạp chí/hội nghị (A*/A/B/C hoặc Q1–Q4).
+      </p>
     </div>
   );
 }

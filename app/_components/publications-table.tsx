@@ -49,6 +49,7 @@ export function PublicationsTable({
   const [sortField, setSortField] = useState<SortField>("year");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterVenue, setFilterVenue] = useState<string>("all");
   const [page, setPage] = useState(1);
 
   // Lecturer lookup
@@ -61,6 +62,15 @@ export function PublicationsTable({
   // Unique years for filter
   const years = useMemo(
     () => [...new Set(papers.map((p) => p.year))].sort((a, b) => b - a),
+    [papers]
+  );
+
+  // Unique venues (tạp chí / hội nghị) for filter, alphabetical
+  const venues = useMemo(
+    () =>
+      [...new Set(papers.map((p) => p.venue).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b)
+      ),
     [papers]
   );
 
@@ -84,6 +94,11 @@ export function PublicationsTable({
       result = result.filter((p) => String(p.year) === filterYear);
     }
 
+    // Venue (tạp chí / hội nghị) filter
+    if (filterVenue !== "all") {
+      result = result.filter((p) => p.venue === filterVenue);
+    }
+
     // Sort
     result.sort((a, b) => {
       let va = a[sortField] as string | number;
@@ -97,7 +112,7 @@ export function PublicationsTable({
       return 0;
     });
     return result;
-  }, [papers, search, sortField, sortDir, filterYear]);
+  }, [papers, search, sortField, sortDir, filterYear, filterVenue]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -182,6 +197,27 @@ export function PublicationsTable({
                   ))}
                 </SelectContent>
               </Select>
+              <Select
+                value={filterVenue}
+                onValueChange={(v) => {
+                  setFilterVenue(v ?? "all");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-[180px] h-10 cursor-pointer">
+                  <SelectValue placeholder="Tạp chí / Hội nghị" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="all" className="cursor-pointer">
+                    Tất cả tạp chí / hội nghị
+                  </SelectItem>
+                  {venues.map((v) => (
+                    <SelectItem key={v} value={v} className="cursor-pointer">
+                      {v}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -198,8 +234,11 @@ export function PublicationsTable({
             <Table className="min-w-[800px] table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/60">
+                  <TableHead className="w-[6%] text-muted-foreground font-semibold text-xs uppercase tracking-wider text-center py-4">
+                    STT
+                  </TableHead>
                   <TableHead
-                    className="w-[40%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider py-4"
+                    className="w-[34%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider py-4"
                     onClick={() => toggleSort("title")}
                   >
                     <span className="flex items-center hover:text-primary transition-colors">
@@ -208,7 +247,7 @@ export function PublicationsTable({
                     </span>
                   </TableHead>
                   <TableHead
-                    className="w-[10%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider text-center py-4"
+                    className="w-[8%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider text-center py-4"
                     onClick={() => toggleSort("year")}
                   >
                     <span className="flex items-center justify-center hover:text-primary transition-colors">
@@ -217,7 +256,7 @@ export function PublicationsTable({
                     </span>
                   </TableHead>
                   <TableHead
-                    className="w-[12%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider py-4"
+                    className="w-[14%] text-muted-foreground cursor-pointer select-none font-semibold text-xs uppercase tracking-wider py-4"
                     onClick={() => toggleSort("venue")}
                   >
                     <span className="flex items-center hover:text-primary transition-colors">
@@ -236,7 +275,7 @@ export function PublicationsTable({
               <TableBody>
                 {pageItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center whitespace-normal">
+                    <TableCell colSpan={6} className="h-40 text-center whitespace-normal">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <FileSearch className="size-10 text-primary/30" />
                         <p>Không tìm thấy bài báo nào</p>
@@ -244,11 +283,14 @@ export function PublicationsTable({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  pageItems.map((paper) => (
+                  pageItems.map((paper, i) => (
                     <TableRow
                       key={paper.id}
                       className="hover:bg-muted/40 transition-colors group"
                     >
+                      <TableCell className="px-4 py-4 align-middle text-center text-sm font-medium text-muted-foreground tabular-nums">
+                        {start + i + 1}
+                      </TableCell>
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
                         <Link
                           href={`/papers/${paper.id}`}
@@ -265,7 +307,7 @@ export function PublicationsTable({
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
                         <Badge
                           variant="secondary"
-                          className="bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 font-semibold shadow-sm"
+                          className="max-w-full h-auto whitespace-normal break-words leading-tight py-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 font-semibold shadow-sm"
                         >
                           {paper.venue}
                         </Badge>
