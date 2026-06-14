@@ -21,8 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { type AuthorEntry } from "@/app/_components/authorship-input";
-import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
+import { AuthorshipInput, type AuthorEntry } from "@/app/_components/authorship-input";
 import { VenuePicker } from "./venue-picker";
 import { BibtexImportDialog } from "@/app/_components/bibtex-import-dialog";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
@@ -49,6 +48,36 @@ const emptyForm = {
   submissionStatus: "submitted" as SubmissionStatus,
 };
 
+// Rebuild the ordered author list from storage for editing: the verbatim names
+// string keeps the order, the lecturerIds carry the internal links. A name that
+// matches a linked lecturer becomes an internal chip (KPI still keys off the id,
+// not the name); the rest are external. Any linked id whose name isn't present in
+// the text is appended so no internal link is silently dropped.
+function reconstructAuthors(
+  authorsStr: string,
+  lecturerIds: number[],
+  lecturers: Lecturer[]
+): AuthorEntry[] {
+  const names = (authorsStr || "").split(",").map((n) => n.trim()).filter(Boolean);
+  const linked = lecturerIds
+    .map((id) => lecturers.find((l) => l.id === id))
+    .filter((l): l is Lecturer => !!l);
+  const usedIds = new Set<number>();
+  const norm = (s: string) => s.trim().toLowerCase();
+  const entries: AuthorEntry[] = names.map((name) => {
+    const match = linked.find((l) => !usedIds.has(l.id) && norm(l.name) === norm(name));
+    if (match) {
+      usedIds.add(match.id);
+      return { type: "internal", id: match.id, name, email: match.email };
+    }
+    return { type: "external", name };
+  });
+  for (const l of linked) {
+    if (!usedIds.has(l.id)) entries.push({ type: "internal", id: l.id, name: l.name, email: l.email });
+  }
+  return entries;
+}
+
 export function PaperFormAdmin({
   open,
   onOpenChange,
@@ -57,11 +86,10 @@ export function PaperFormAdmin({
   editingPaper,
 }: PaperFormAdminProps) {
   const [form, setForm] = useState(emptyForm);
-  // Authors are stored verbatim as a free-text string (the names exactly as in
-  // the paper). The internal-lecturer link (for KPI) is a SEPARATE id list, so
-  // attribution never depends on a lecturer's name appearing in the author text.
-  const [authorsText, setAuthorsText] = useState("");
-  const [internalLecturerIds, setInternalLecturerIds] = useState<number[]>([]);
+  // Ordered author list (internal faculty + external). The verbatim names string
+  // is derived from this on save; the internal links (for KPI) are the ids of the
+  // "internal" entries — attribution keys off the id, not the displayed name.
+  const [authors, setAuthors] = useState<AuthorEntry[]>([]);
   const [creditedId, setCreditedId] = useState<string>("");
   const [firstAuthor, setFirstAuthor] = useState(false);
   const [corresponding, setCorresponding] = useState(false);
@@ -101,14 +129,12 @@ export function PaperFormAdmin({
       setFirstAuthor(!!editingPaper.isFirstAuthor);
       setCorresponding(!!editingPaper.isCorrespondingAuthor);
 
-      // Verbatim author text + lecturer links straight from storage — no name
-      // matching (which is what used to mis-tag / re-inject lecturer names).
-      setAuthorsText(editingPaper.authors || "");
-      setInternalLecturerIds(editingPaper.lecturerIds || []);
+      // Rebuild the ordered author list from the verbatim names + linked ids, so
+      // the reorder UI opens with the real order and the internal chips intact.
+      setAuthors(reconstructAuthors(editingPaper.authors || "", editingPaper.lecturerIds || [], lecturers));
     } else {
       setForm(emptyForm);
-      setAuthorsText("");
-      setInternalLecturerIds([]);
+      setAuthors([]);
       setCreditedId("");
       setFirstAuthor(false);
       setCorresponding(false);
@@ -116,17 +142,27 @@ export function PaperFormAdmin({
   }, [editingPaper, open, lecturers]);
 
   // Internal (faculty) authors are the only candidates for the single credit —
-  // resolved from the linked id list, not from the author text.
-  const internalAuthors = internalLecturerIds
-    .map((id) => lecturers.find((l) => l.id === id))
-    .filter((l): l is Lecturer => !!l);
+  // the distinct internal entries from the ordered author list.
+  const internalAuthors = useMemo(() => {
+    const seen = new Set<number>();
+    const out: Lecturer[] = [];
+    for (const a of authors) {
+      if (a.type === "internal" && !seen.has(a.id)) {
+        const l = lecturers.find((x) => x.id === a.id);
+        if (l) { seen.add(a.id); out.push(l); }
+      }
+    }
+    return out;
+  }, [authors, lecturers]);
 
-  function addInternalLecturer(id: number) {
-    setInternalLecturerIds((ids) => (ids.includes(id) ? ids : [...ids, id]));
-  }
-  function removeInternalLecturer(id: number) {
-    setInternalLecturerIds((ids) => ids.filter((x) => x !== id));
-    if (creditedId === String(id)) setCreditedId("");
+  // Update the author list; if the credited person is no longer an internal
+  // author, drop the credit (kept here rather than in an effect to avoid a
+  // cascading re-render).
+  function handleAuthorsChange(next: AuthorEntry[]) {
+    setAuthors(next);
+    if (creditedId && !next.some((a) => a.type === "internal" && String((a as { id: number }).id) === creditedId)) {
+      setCreditedId("");
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -141,13 +177,15 @@ export function PaperFormAdmin({
       return;
     }
 
-    if (!authorsText.trim()) {
-      toast.error("Vui lòng nhập danh sách tác giả.");
+    if (authors.length === 0) {
+      toast.error("Vui lòng thêm ít nhất một tác giả.");
       return;
     }
 
-    const allAuthors = authorsText.trim();
-    const lecturerIds = internalLecturerIds;
+    const allAuthors = authors.map((a) => a.name.trim()).filter(Boolean).join(", ");
+    const lecturerIds = [
+      ...new Set(authors.filter((a) => a.type === "internal").map((a) => (a as { id: number }).id)),
+    ];
 
     // Only a linked internal author may hold the credit (enforced server-side too).
     const credited = creditedId && lecturerIds.includes(Number(creditedId)) ? Number(creditedId) : null;
@@ -172,8 +210,7 @@ export function PaperFormAdmin({
     onSave(paper);
     onOpenChange(false);
     setForm(emptyForm);
-    setAuthorsText("");
-    setInternalLecturerIds([]);
+    setAuthors([]);
     setCreditedId("");
     setFirstAuthor(false);
     setCorresponding(false);
@@ -195,10 +232,9 @@ export function PaperFormAdmin({
       doi: data.doi || "",
       url: data.url || "",
     });
-    // Author text is the verbatim names; the internal links come from the import
-    // matches (alias / suggestion) and stay editable as chips below.
-    setAuthorsText(data.authors.map((a) => a.name).join(", "));
-    setInternalLecturerIds(data.authors.filter((a) => a.type === "internal").map((a) => a.id));
+    // The import already resolved internal/external entries (alias / suggestion);
+    // drop them straight into the ordered author list, still editable below.
+    setAuthors(data.authors);
   }
 
   return (
@@ -290,38 +326,9 @@ export function PaperFormAdmin({
               Danh sách tác giả <span className="text-destructive">*</span>
             </label>
             <p className="text-xs text-muted-foreground mb-2">
-              Nhập tên tác giả <strong>đúng như trong bài báo</strong>, cách nhau bằng dấu phẩy. Không cần thay bằng tên giảng viên.
+              Thêm tác giả theo <strong>đúng thứ tự trong bài</strong>. Chọn giảng viên nội bộ (tính KPI) hoặc nhập tác giả ngoài — dùng mũi tên để sắp xếp lại thứ tự.
             </p>
-            <textarea
-              value={authorsText}
-              onChange={(e) => setAuthorsText(e.target.value)}
-              placeholder="Tien Do, Thanh Duc Ngo, ..."
-              rows={2}
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
-            />
-          </div>
-
-          {/* Internal lecturer links — separate from the author text, drives KPI. */}
-          <div className="space-y-2">
-            <label className="text-sm font-semibold font-heading">Giảng viên nội bộ (tính KPI)</label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Chọn giảng viên thuộc Khoa là tác giả của bài — dùng để tính KPI, độc lập với tên hiển thị ở trên.
-            </p>
-            {internalAuthors.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-1">
-                {internalAuthors.map((l) => (
-                  <span key={l.id} className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 text-xs px-2 py-0.5">
-                    {l.title}. {l.name}
-                    <button type="button" onClick={() => removeInternalLecturer(l.id)} className="hover:text-destructive cursor-pointer" aria-label="Xoá">×</button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <LecturerCombobox
-              lecturers={lecturers.filter((l) => !internalLecturerIds.includes(l.id))}
-              value={null}
-              onChange={(id) => { if (id != null) addInternalLecturer(id); }}
-            />
+            <AuthorshipInput lecturers={lecturers} value={authors} onChange={handleAuthorsChange} />
           </div>
 
           {/* KPI publication tracking (single-credit rule + Scopus/Q1) */}
