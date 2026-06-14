@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ArrowDown,
   GraduationCap,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,7 @@ export default function PapersPage() {
   const [filterLecturer, setFilterLecturer] = useState<number | null>(null);
   const [filterVenue, setFilterVenue] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all"); // "all" | "pending" | <SubmissionStatus>
+  const [creditPendingOnly, setCreditPendingOnly] = useState(false); // chỉ hiện bài chưa gán KPI
   const [yearSortDir, setYearSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
@@ -81,6 +83,17 @@ export default function PapersPage() {
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleteMultipleOpen, setDeleteMultipleOpen] = useState(false);
+
+  // Deep-link from the KPI "needs credit" nudge: ?credit=pending pre-activates
+  // the "Chưa gán KPI" filter.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("credit") === "pending"
+    ) {
+      setCreditPendingOnly(true);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -159,6 +172,14 @@ export default function PapersPage() {
       result = result.filter((p) => (p.submissionStatus ?? "submitted") === filterStatus);
     }
 
+    // "Chưa gán KPI": ≥2 internal authors and no credited person yet (matches the
+    // KPI "needs credit" nudge — single-author papers are auto-credited).
+    if (creditPendingOnly) {
+      result = result.filter(
+        (p) => (p.lecturerIds || []).length > 1 && p.creditedLecturerId == null
+      );
+    }
+
     // Sort by year (direction toggled via the "Năm" column header), newest id as tiebreak
     result.sort((a, b) => {
       const cmp = a.year - b.year;
@@ -166,7 +187,7 @@ export default function PapersPage() {
     });
 
     return result;
-  }, [papers, search, filterYear, filterLecturer, filterVenue, filterStatus, yearSortDir]);
+  }, [papers, search, filterYear, filterLecturer, filterVenue, filterStatus, creditPendingOnly, yearSortDir]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const currentPage = Math.min(page, totalPages);
@@ -174,13 +195,14 @@ export default function PapersPage() {
   const pageItems = filtered.slice(start, start + ITEMS_PER_PAGE);
 
   const hasFilters =
-    filterYear !== "all" || filterLecturer !== null || filterVenue !== "all" || filterStatus !== "all";
+    filterYear !== "all" || filterLecturer !== null || filterVenue !== "all" || filterStatus !== "all" || creditPendingOnly;
 
   function clearFilters() {
     setFilterYear("all");
     setFilterLecturer(null);
     setFilterVenue("all");
     setFilterStatus("all");
+    setCreditPendingOnly(false);
     setSearch("");
     setPage(1);
     setSelectedIds(new Set());
@@ -392,6 +414,16 @@ export default function PapersPage() {
               ))}
             </SelectContent>
           </Select>
+
+          <Button
+            variant={creditPendingOnly ? "default" : "outline"}
+            size="sm"
+            className={`h-10 cursor-pointer gap-1.5 ${creditPendingOnly ? "bg-amber-500 text-white hover:bg-amber-500/90" : "text-amber-700 border-amber-500/40 hover:bg-amber-50"}`}
+            onClick={() => { setCreditPendingOnly((v) => !v); setPage(1); }}
+            title="Chỉ hiện bài có nhiều tác giả nội bộ nhưng chưa gán người được tính KPI"
+          >
+            <AlertTriangle className="size-3.5" /> Chưa gán KPI
+          </Button>
 
           {hasFilters && (
             <Button

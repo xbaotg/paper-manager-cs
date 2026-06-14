@@ -128,7 +128,8 @@ export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> 
   return {
     periods, indicators, lecturers, selectedPeriodId: selected.id,
     targets, facultyTargets, rows, rollup, pipeline,
-    needsCreditCount: listPapersNeedingCredit().length,
+    // Scope the "needs credit" nudge to the selected period's year.
+    needsCreditCount: listPapersNeedingCredit(selected.startYear).length,
   };
 }
 

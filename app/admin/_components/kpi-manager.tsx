@@ -241,13 +241,16 @@ export function KpiManager({ initial }: { initial: ManagerKpiData }) {
       ) : (
         <>
           {needsCreditCount > 0 && (
-            <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+            <Link
+              href="/admin/papers?credit=pending"
+              className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors"
+            >
               <AlertTriangle className="size-4 mt-0.5 shrink-0" />
               <span>
                 <strong>{needsCreditCount}</strong> bài báo có tác giả nội bộ nhưng chưa gán “cá nhân được tính kết quả”.
-                KPI tạm tính theo tác giả đầu tiên — vào trang Bài báo để xác định người được ghi nhận.
+                KPI tạm tính theo tác giả đầu tiên — <span className="underline font-medium">bấm để lọc &amp; xác định người được ghi nhận</span>.
               </span>
-            </div>
+            </Link>
           )}
 
           {/* Faculty-level targets (55 Scopus / 17 Q1 / PhD milestone) */}

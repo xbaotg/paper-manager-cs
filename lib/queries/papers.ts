@@ -190,16 +190,20 @@ export function deletePaper(id: number): void {
 // genuinely ambiguous and managers must resolve them so the single-credit KPI
 // count is correct. Single-author papers are auto-credited (see normalizeCredited)
 // and never flagged here.
-export function listPapersNeedingCredit(): { id: number; title: string; year: number }[] {
-  return getDb()
+// With `year`, restrict to that exact conference year (the selected KPI period);
+// otherwise count the whole plan window (>= 2026).
+export function listPapersNeedingCredit(year?: number): { id: number; title: string; year: number }[] {
+  const db = getDb();
+  const yearClause = year != null ? "p.year = ?" : "p.year >= ?";
+  return db
     .prepare(
       `SELECT p.id, p.title, p.year FROM papers p
        WHERE p.credited_lecturer_id IS NULL
-         AND p.year >= ?
+         AND ${yearClause}
          AND (SELECT COUNT(*) FROM paper_lecturers pl WHERE pl.paper_id = p.id) > 1
        ORDER BY p.year DESC, p.rowid DESC`
     )
-    .all(KPI_PLAN_START_YEAR) as { id: number; title: string; year: number }[];
+    .all(year ?? KPI_PLAN_START_YEAR) as { id: number; title: string; year: number }[];
 }
 
 // Ownership check for lecturer-scoped edits (Phase 4).
