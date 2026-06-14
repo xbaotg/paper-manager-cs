@@ -7,6 +7,9 @@ interface StatsCardProps {
   value: number | string;
   subtext?: string;
   accentClass?: string;
+  // When provided, the whole card becomes a button (e.g. to open the matching
+  // paper list).
+  onClick?: () => void;
 }
 
 export function StatsCard({
@@ -15,9 +18,30 @@ export function StatsCard({
   value,
   subtext,
   accentClass = "text-primary bg-primary/10",
+  onClick,
 }: StatsCardProps) {
+  const clickable = !!onClick;
   return (
-    <Card className="border-border/50 bg-card/80 backdrop-blur-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-default">
+    <Card
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick!();
+              }
+            }
+          : undefined
+      }
+      className={`border-border/50 bg-card/80 backdrop-blur-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ${
+        clickable
+          ? "cursor-pointer hover:ring-2 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          : "cursor-default"
+      }`}
+    >
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div>
