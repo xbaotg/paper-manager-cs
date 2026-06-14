@@ -521,8 +521,8 @@ export default function AdminDashboard() {
         return (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`${filteredPapers.length} bài tổng`} accentClass="text-blue-500 bg-blue-500/10" onClick={() => setCardList("scopus")} />
-              <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Theo dữ liệu paper" accentClass="text-emerald-500 bg-emerald-500/10" onClick={() => setCardList("q1")} />
+              <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`trong đó ${q1Count} bài Q1`} accentClass="text-blue-500 bg-blue-500/10" onClick={() => setCardList("scopus")} />
+              <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Nằm trong nhóm Scopus" accentClass="text-emerald-500 bg-emerald-500/10" onClick={() => setCardList("q1")} />
               <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Chưa chấp nhận (đã gửi/phản biện/rebuttal)" accentClass="text-amber-500 bg-amber-500/10" onClick={() => setCardList("pending")} />
               <StatsCard icon={Users} label="Tỷ lệ chấp nhận" value={acceptRate == null ? "—" : `${acceptRate}%`} subtext={`${accepted} chấp nhận / ${denied} từ chối`} accentClass="text-indigo-500 bg-indigo-500/10" />
             </div>

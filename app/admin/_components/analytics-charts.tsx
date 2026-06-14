@@ -261,7 +261,11 @@ export function ScopusByYearChart({ papers }: ChartProps) {
         byYear[y].other += 1;
       }
     });
-    return Object.values(byYear).sort((a, b) => a.year - b.year).map((d) => ({ ...d, year: String(d.year) }));
+    // Split the Scopus total into its Q1 part and the rest, so the stacked bar
+    // shows Q1 *inside* Scopus instead of as a separate (confusing) number.
+    return Object.values(byYear)
+      .sort((a, b) => a.year - b.year)
+      .map((d) => ({ ...d, scopusNonQ1: Math.max(0, d.scopus - d.q1), year: String(d.year) }));
   }, [papers]);
 
   if (data.length === 0) {
@@ -276,9 +280,9 @@ export function ScopusByYearChart({ papers }: ChartProps) {
           <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
           <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="scopus" stackId="a" name="Scopus" fill="#3b89ff" />
-          <Bar dataKey="other" stackId="a" name="Khác" fill="#cbd5e1" />
-          <Bar dataKey="q1" name="Trong đó Q1" fill="#00d722" />
+          <Bar dataKey="q1" stackId="a" name="Scopus · Q1" fill="#00d722" />
+          <Bar dataKey="scopusNonQ1" stackId="a" name="Scopus · ngoài Q1" fill="#3b89ff" />
+          <Bar dataKey="other" stackId="a" name="Ngoài Scopus" fill="#cbd5e1" />
         </BarChart>
       </ResponsiveContainer>
     </div>

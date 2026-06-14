@@ -86,7 +86,7 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
           value={stats.total}
         />
         <Stat label="Bài Scopus" value={stats.scopusIndexed} />
-        <Stat label="Bài Q1" value={stats.q1} />
+        <Stat label="Bài Q1 (trong Scopus)" value={stats.q1} />
       </div>
 
       {/* KPI per period */}
