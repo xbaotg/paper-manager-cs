@@ -11,6 +11,7 @@ import {
   countLecturersByBoMon,
   type BoMon,
 } from "@/lib/queries/bo_mon";
+import { logAction } from "@/lib/logger";
 
 export interface BoMonListItem extends BoMon {
   lecturerCount: number;
@@ -57,6 +58,7 @@ export async function createBoMonAction(input: {
   } catch {
     return { ok: false, error: "Mã bộ môn đã tồn tại." };
   }
+  await logAction("bomon.create", { code: input.code.trim(), name: input.nameVi.trim() });
   revalidatePath("/admin/bo-mon");
   return { ok: true, data: snapshot() };
 }
@@ -79,6 +81,7 @@ export async function updateBoMonAction(
   } catch {
     return { ok: false, error: "Mã bộ môn đã tồn tại." };
   }
+  await logAction("bomon.update", { id });
   revalidatePath("/admin/bo-mon");
   return { ok: true, data: snapshot() };
 }
@@ -87,6 +90,7 @@ export async function deleteBoMonAction(id: number): Promise<BoMonResult> {
   await requireManager();
   if (!getBoMonById(id)) return { ok: false, error: "Bộ môn không tồn tại." };
   deleteBoMon(id);
+  await logAction("bomon.delete", { id });
   revalidatePath("/admin/bo-mon");
   return { ok: true, data: snapshot() };
 }

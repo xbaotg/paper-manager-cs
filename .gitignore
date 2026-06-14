@@ -52,6 +52,11 @@ next-env.d.ts
 /backups/*
 !/backups/README.md
 /prod.log
+
+# Action/audit logs (written at runtime, rotated at 50MB)
+/logs/
+app-*.log
+app.log
 /.next.old.*
 /.next.stale.*
 

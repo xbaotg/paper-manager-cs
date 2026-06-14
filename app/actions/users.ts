@@ -20,6 +20,7 @@ import {
 } from "@/lib/queries/users";
 import { listBoMon, type BoMon } from "@/lib/queries/bo_mon";
 import { generateLecturerUsername } from "@/lib/data";
+import { logAction } from "@/lib/logger";
 
 export interface UsersSnapshot {
   users: UserListItem[];
@@ -85,6 +86,7 @@ export async function createUserAction(input: {
     return { ok: false, error: "Không tạo được tài khoản (giảng viên có thể đã được liên kết)." };
   }
 
+  await logAction("user.create", { username, role: input.role });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }
@@ -133,6 +135,7 @@ export async function generateLecturerAccountsAction(): Promise<GenerateAccounts
     }
   }
 
+  await logAction("user.generate_accounts", { created: created.length, skipped: skipped.length });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot(), created, skipped };
 }
@@ -158,6 +161,7 @@ export async function updateUsernameAction(id: number, newUsername: string): Pro
   } catch {
     return { ok: false, error: "Không đổi được tên đăng nhập (có thể đã tồn tại)." };
   }
+  await logAction("user.rename", { id, newUsername: username });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }
@@ -169,6 +173,7 @@ export async function resetPasswordAction(id: number, newPassword: string): Prom
   }
   if (!getUserById(id)) return { ok: false, error: "Tài khoản không tồn tại." };
   updateUserPassword(id, await bcrypt.hash(newPassword, 10));
+  await logAction("user.reset_password", { id });
   return { ok: true };
 }
 
@@ -185,6 +190,7 @@ export async function setUserActiveAction(id: number, active: boolean): Promise<
   }
 
   setUserActive(id, active);
+  await logAction("user.set_active", { id, active });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }
@@ -200,6 +206,7 @@ export async function setUserAdminAction(id: number, isAdmin: boolean): Promise<
     return { ok: false, error: "Chỉ có thể cấp quyền quản trị cho tài khoản giảng viên." };
   }
   setUserAdmin(id, isAdmin);
+  await logAction("user.set_admin", { id, isAdmin });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }
@@ -220,6 +227,7 @@ export async function changeMyPasswordAction(input: {
   const ok = await bcrypt.compare(input.currentPassword ?? "", u.password_hash);
   if (!ok) return { ok: false, error: "Mật khẩu hiện tại không đúng." };
   updateUserPassword(me.id, await bcrypt.hash(input.newPassword, 10));
+  await logAction("user.change_password");
   return { ok: true };
 }
 
@@ -233,6 +241,7 @@ export async function deleteUserAction(id: number): Promise<ActionResult> {
   }
 
   deleteUser(id);
+  await logAction("user.delete", { id });
   revalidatePath("/admin/users");
   return { ok: true, data: snapshot() };
 }

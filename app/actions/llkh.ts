@@ -5,6 +5,7 @@ import { getLlkh, saveLlkh } from "@/lib/queries/llkh";
 import { getPapersByLecturer } from "@/lib/queries/papers";
 import { getLecturerById } from "@/lib/queries/lecturers";
 import { normalizeLlkh, type LlkhProfile } from "@/lib/llkh";
+import { logAction } from "@/lib/logger";
 import type { Paper } from "@/lib/data";
 
 export interface MyLlkhData {
@@ -38,6 +39,7 @@ export async function saveMyLlkh(profile: LlkhProfile): Promise<SaveLlkhResult> 
   const user = await requireLecturer();
   try {
     saveLlkh(user.lecturerId!, normalizeLlkh(profile));
+    await logAction("llkh.save_self", { lecturerId: user.lecturerId });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Không lưu được." };
@@ -66,6 +68,7 @@ export async function saveLlkhForLecturer(
   try {
     if (!getLecturerById(lecturerId)) return { ok: false, error: "Không tìm thấy giảng viên." };
     saveLlkh(lecturerId, normalizeLlkh(profile));
+    await logAction("llkh.save_for_lecturer", { lecturerId });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Không lưu được." };

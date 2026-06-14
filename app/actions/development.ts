@@ -19,6 +19,7 @@ import {
 } from "@/lib/queries/development";
 import { computePhdActual, type LecturerRank } from "@/lib/kpi";
 import { PHD_MILESTONES } from "@/lib/kpi-policy";
+import { logAction } from "@/lib/logger";
 import type { AcademicRank } from "@/lib/data";
 
 export interface DevLecturer {
@@ -109,6 +110,7 @@ export async function upsertDevelopmentAction(input: {
     return { ok: false, error: "Trình độ hiện tại không hợp lệ." };
   }
   upsertDevelopment(input);
+  await logAction("development.upsert", { lecturerId: input.lecturerId });
   revalidatePath("/admin/development");
   return { ok: true, data: buildSnapshot() };
 }
@@ -116,6 +118,7 @@ export async function upsertDevelopmentAction(input: {
 export async function deleteDevelopmentAction(id: number): Promise<DevResult> {
   await requireManager();
   deleteDevelopment(id);
+  await logAction("development.delete", { id });
   revalidatePath("/admin/development");
   return { ok: true, data: buildSnapshot() };
 }
@@ -136,6 +139,7 @@ export async function upsertProgressAction(input: {
   if (input.quarter < 1 || input.quarter > 4) return { ok: false, error: "Quý phải từ 1 đến 4." };
   if (!Number.isInteger(input.year)) return { ok: false, error: "Năm không hợp lệ." };
   upsertProgress({ ...input, recordedBy: me.id });
+  await logAction("development.progress_upsert", { developmentId: input.developmentId });
   return { ok: true, data: listProgress(input.developmentId) };
 }
 
@@ -145,6 +149,7 @@ export async function deleteProgressAction(
 ): Promise<{ ok: boolean; data?: DevelopmentProgress[] }> {
   await requireManager();
   deleteProgress(id);
+  await logAction("development.progress_delete", { id });
   return { ok: true, data: listProgress(developmentId) };
 }
 
