@@ -343,8 +343,11 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   </tr></table>`;
 
   const pageCss = forPdf
-    ? `@page { size: 21cm 29.7cm; margin: 0; }
-    div.WordSection1 { padding: 1.4cm 2cm 1.6cm 2.5cm; box-sizing: border-box; }
+    ? // Zero the @page margin so the browser prints NO header/footer (date / URL /
+      // page numbers live in that margin box). Re-create normal margins as inner
+      // padding — same 2cm / 3cm-left as the Word export.
+      `@page { size: 21cm 29.7cm; margin: 0; }
+    div.WordSection1 { padding: 2cm 2cm 2cm 3cm; box-sizing: border-box; }
     body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4;margin:0}`
     : `@page WordSection1 { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 3cm; }
     div.WordSection1 { page: WordSection1; }
