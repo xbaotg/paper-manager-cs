@@ -13,6 +13,7 @@ import {
   Building2,
   GraduationCap,
   FileBarChart,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +27,7 @@ const ADMIN_NAV = [
   { label: "Tạp chí/Hội nghị", href: "/admin/venues", icon: BookOpen, exact: false },
   { label: "Báo cáo", href: "/admin/reports", icon: FileBarChart, exact: false },
   { label: "Tài khoản", href: "/admin/users", icon: ShieldCheck, exact: false },
+  { label: "Dữ liệu & Logs", href: "/admin/data", icon: Database, exact: false },
 ];
 
 // Trưởng bộ môn: monitoring views scoped to their bộ môn (no management tools).
