@@ -3,6 +3,11 @@ import { isVenueQ1, isVenueScopus } from "./venues";
 import type { Paper, AcademicRank } from "./data";
 import { isPendingSubmission, countsAsPublication } from "./data";
 
+// The KPI action plan runs 2026–2030; papers before 2026 are intentionally
+// outside every KPI period (see the project decision). Credit/attribution nudges
+// are therefore only meaningful from this year on.
+export const KPI_PLAN_START_YEAR = 2026;
+
 export interface KpiPeriod {
   id: number;
   label: string;      // "2024-2025"

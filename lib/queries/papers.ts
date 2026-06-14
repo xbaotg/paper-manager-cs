@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../sqlite";
+import { KPI_PLAN_START_YEAR } from "../kpi";
 import type { Paper } from "../data";
 
 interface PaperRow {
@@ -194,10 +195,11 @@ export function listPapersNeedingCredit(): { id: number; title: string; year: nu
     .prepare(
       `SELECT p.id, p.title, p.year FROM papers p
        WHERE p.credited_lecturer_id IS NULL
+         AND p.year >= ?
          AND (SELECT COUNT(*) FROM paper_lecturers pl WHERE pl.paper_id = p.id) > 1
        ORDER BY p.year DESC, p.rowid DESC`
     )
-    .all() as { id: number; title: string; year: number }[];
+    .all(KPI_PLAN_START_YEAR) as { id: number; title: string; year: number }[];
 }
 
 // Ownership check for lecturer-scoped edits (Phase 4).
