@@ -12,6 +12,7 @@ interface LecturerRow {
   academic_rank: string | null;
   bo_mon_id: number | null;
   avatar_url: string | null;
+  excluded_from_kpi: number | null;
 }
 
 function toLecturer(r: LecturerRow): Lecturer {
@@ -25,6 +26,7 @@ function toLecturer(r: LecturerRow): Lecturer {
     academicRank: (r.academic_rank as AcademicRank | null) ?? academicRankFromTitle(r.title),
     boMonId: r.bo_mon_id,
     avatarUrl: r.avatar_url,
+    excludedFromKpi: !!r.excluded_from_kpi,
   };
 }
 
@@ -43,7 +45,7 @@ export function getLecturerById(id: number): Lecturer | null {
 export function createLecturer(l: Lecturer): void {
   getDb()
     .prepare(
-      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url, excluded_from_kpi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       l.id,
@@ -54,8 +56,17 @@ export function createLecturer(l: Lecturer): void {
       l.phone ?? null,
       l.academicRank ?? academicRankFromTitle(l.title),
       l.boMonId ?? null,
-      l.avatarUrl ?? null
+      l.avatarUrl ?? null,
+      l.excludedFromKpi ? 1 : 0
     );
+}
+
+// Toggle the "exclude from KPI" flag. Kept separate from updateLecturer (which
+// the edit form calls and which deliberately leaves this column alone).
+export function setLecturerKpiExcluded(id: number, excluded: boolean): void {
+  getDb()
+    .prepare("UPDATE lecturers SET excluded_from_kpi = ? WHERE id = ?")
+    .run(excluded ? 1 : 0, id);
 }
 
 export function updateLecturer(id: number, l: Lecturer): void {

@@ -11,6 +11,8 @@ import {
   Mail,
   Phone,
   ScrollText,
+  CircleSlash,
+  CircleCheck,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +37,7 @@ import { LecturerForm } from "../_components/lecturer-form";
 import { ConfirmDialog } from "../_components/confirm-dialog";
 import { type Lecturer, type Paper } from "@/lib/data";
 import type { BoMon } from "@/lib/queries/bo_mon";
-import { getDatabase, addLecturerServer, updateLecturerServer, deleteLecturerServer } from "@/app/actions";
+import { getDatabase, addLecturerServer, updateLecturerServer, deleteLecturerServer, setLecturerKpiExcludedServer } from "@/app/actions";
 import { getBoMonOptions } from "@/app/actions/bo_mon";
 
 export default function LecturersPage() {
@@ -111,6 +113,13 @@ export default function LecturersPage() {
     setLecturers(db.lecturers);
     toast.success("Xoá giảng viên thành công!");
     setDeleteTarget(null);
+  }
+
+  async function handleToggleKpi(lecturer: Lecturer) {
+    const next = !lecturer.excludedFromKpi;
+    const db = await setLecturerKpiExcludedServer(lecturer.id, next);
+    setLecturers(db.lecturers);
+    toast.success(next ? `Đã loại ${lecturer.name} khỏi thống kê KPI` : `Đã tính lại ${lecturer.name} vào KPI`);
   }
 
   if (!loaded) {
@@ -220,6 +229,14 @@ export default function LecturersPage() {
                           >
                             {lecturer.title}
                           </Badge>
+                          {lecturer.excludedFromKpi && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] mt-0.5 ml-1 bg-amber-500/10 text-amber-600 border border-amber-500/20"
+                            >
+                              Không tính KPI
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -258,6 +275,15 @@ export default function LecturersPage() {
                         >
                           <ScrollText className="size-4" />
                         </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className={`cursor-pointer opacity-60 hover:opacity-100 ${lecturer.excludedFromKpi ? "text-amber-600 opacity-100" : "hover:text-amber-600"}`}
+                          onClick={() => handleToggleKpi(lecturer)}
+                          title={lecturer.excludedFromKpi ? "Tính lại vào KPI" : "Loại khỏi thống kê KPI"}
+                        >
+                          {lecturer.excludedFromKpi ? <CircleCheck className="size-4" /> : <CircleSlash className="size-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon-sm"

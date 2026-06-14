@@ -47,7 +47,8 @@ import {
   FacultyKpiBars, LecturerKpiBars,
 } from "./_components/analytics-charts";
 import { getKpiByYear, type ManagerKpiData } from "@/app/actions/kpi";
-import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, isPendingSubmission, countsAsPublication } from "@/lib/data";
+import { type Paper, type Lecturer, LECTURER_TITLE_LABELS, SUBMISSION_STATUS_LABEL, isPendingSubmission, countsAsPublication } from "@/lib/data";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getVenueRankBucket, isVenueQ1, isVenueScopus, hydrateVenues } from "@/lib/venues";
 import { isCreditedTo } from "@/lib/kpi";
 import { getDatabase } from "@/app/actions";
@@ -104,6 +105,8 @@ export default function AdminDashboard() {
   const [filterRankBucket, setFilterRankBucket] = useState<string>("all");
   const [filterLecturerYear, setFilterLecturerYear] = useState<string>("all");
   const [filterHasPapersOnly, setFilterHasPapersOnly] = useState(false);
+  // Which KPI card's paper list is open in the drill-down dialog.
+  const [cardList, setCardList] = useState<"scopus" | "q1" | "pending" | null>(null);
 
   // KPI achievement for the year tab — loaded lazily when a single year is selected.
   const [kpiYearData, setKpiYearData] = useState<ManagerKpiData | null>(null);
@@ -145,14 +148,23 @@ export default function AdminDashboard() {
     [papers]
   );
 
+  // Lecturers excluded from KPI: their single-credited papers drop out of every
+  // paper-based statistic (cards + all charts read filteredPapers).
+  const excludedLecturerIds = useMemo(
+    () => new Set(lecturers.filter((l) => l.excludedFromKpi).map((l) => l.id)),
+    [lecturers]
+  );
+
   const filteredPapers = useMemo(() => {
     return papers.filter((p) => {
       if (filterLecturerId !== null && !(p.lecturerIds || []).includes(filterLecturerId)) return false;
       if (filterStartYear !== "all" && p.year < parseInt(filterStartYear, 10)) return false;
       if (filterEndYear !== "all" && p.year > parseInt(filterEndYear, 10)) return false;
+      const owner = p.creditedLecturerId ?? p.lecturerIds?.[0] ?? null;
+      if (owner != null && excludedLecturerIds.has(owner)) return false;
       return true;
     });
-  }, [papers, filterLecturerId, filterStartYear, filterEndYear]);
+  }, [papers, filterLecturerId, filterStartYear, filterEndYear, excludedLecturerIds]);
 
   // Derived Stats
   const hasFilters = filterLecturerId !== null || filterStartYear !== "all" || filterEndYear !== "all";
@@ -171,12 +183,13 @@ export default function AdminDashboard() {
       // in-review pipeline.
       if (!countsAsPublication(p.submissionStatus)) return;
       (p.lecturerIds || []).forEach((lid) => {
+        if (excludedLecturerIds.has(lid)) return; // excluded from all stats
         if (!stats[lid]) stats[lid] = { count: 0 };
         stats[lid].count += 1;
       });
     });
     return stats;
-  }, [filteredPapers]);
+  }, [filteredPapers, excludedLecturerIds]);
 
   // Full lecturer analytics (for the table section)
   const allLecturerAnalytics = useMemo(() => {
@@ -185,7 +198,7 @@ export default function AdminDashboard() {
       ? filteredPapers.filter((p) => p.year === parseInt(filterLecturerYear, 10))
       : filteredPapers;
 
-    return lecturers.map((lecturer) => {
+    return lecturers.filter((l) => !excludedLecturerIds.has(l.id)).map((lecturer) => {
       // Only accepted / published papers count toward the analytics; the
       // in-progress pipeline (submitted / under_review / rebuttal) and denied
       // papers are excluded so the per-lecturer totals reflect real output.
@@ -223,7 +236,7 @@ export default function AdminDashboard() {
         papers: lecturerPapers,
       };
     });
-  }, [lecturers, filteredPapers, filterLecturerYear]);
+  }, [lecturers, filteredPapers, filterLecturerYear, excludedLecturerIds]);
 
   const filteredLecturerAnalytics = useMemo(() => {
     const q = lecturerSearch.toLowerCase();
@@ -494,12 +507,23 @@ export default function AdminDashboard() {
         const denied = filteredPapers.filter((p) => p.submissionStatus === "denied").length;
         const decisions = accepted + denied;
         const acceptRate = decisions > 0 ? Math.round((accepted / decisions) * 100) : null;
+        // Drill-down lists behind the clickable KPI cards.
+        const isQ1Paper = (p: Paper) => (p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue));
+        const cardLists = {
+          scopus: filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue)),
+          q1: filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue) && isQ1Paper(p)),
+          pending: filteredPapers.filter((p) => isPendingSubmission(p.submissionStatus)),
+        };
+        const cardTitles: Record<"scopus" | "q1" | "pending", string> = {
+          scopus: "Bài Scopus", q1: "Bài Q1", pending: "Đang chờ kết quả",
+        };
+        const activeList = cardList ? cardLists[cardList] : [];
         return (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`${filteredPapers.length} bài tổng`} accentClass="text-blue-500 bg-blue-500/10" />
-              <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Theo dữ liệu paper" accentClass="text-emerald-500 bg-emerald-500/10" />
-              <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Chưa chấp nhận (đã gửi/phản biện/rebuttal)" accentClass="text-amber-500 bg-amber-500/10" />
+              <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`${filteredPapers.length} bài tổng`} accentClass="text-blue-500 bg-blue-500/10" onClick={() => setCardList("scopus")} />
+              <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Theo dữ liệu paper" accentClass="text-emerald-500 bg-emerald-500/10" onClick={() => setCardList("q1")} />
+              <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Chưa chấp nhận (đã gửi/phản biện/rebuttal)" accentClass="text-amber-500 bg-amber-500/10" onClick={() => setCardList("pending")} />
               <StatsCard icon={Users} label="Tỷ lệ chấp nhận" value={acceptRate == null ? "—" : `${acceptRate}%`} subtext={`${accepted} chấp nhận / ${denied} từ chối`} accentClass="text-indigo-500 bg-indigo-500/10" />
             </div>
 
@@ -540,6 +564,35 @@ export default function AdminDashboard() {
                 <CardContent><TopVenues papers={filteredPapers} /></CardContent>
               </Card>
             </div>
+
+            {/* KPI card drill-down — the list of papers behind the clicked metric */}
+            <Dialog open={cardList != null} onOpenChange={(o) => { if (!o) setCardList(null); }}>
+              <DialogContent className="sm:max-w-[640px] max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {cardList ? cardTitles[cardList] : ""} · {activeList.length} bài
+                  </DialogTitle>
+                </DialogHeader>
+                {activeList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-6 text-center">Không có bài nào.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {activeList.map((p) => (
+                      <Link
+                        key={p.id}
+                        href={`/papers/${p.id}`}
+                        className="block rounded-lg border p-3 hover:bg-muted/40 transition-colors"
+                      >
+                        <p className="font-medium text-sm leading-snug">{p.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {p.year} · {p.venue} · {SUBMISSION_STATUS_LABEL[p.submissionStatus ?? "submitted"]}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </>
         );
       })()}

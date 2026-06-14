@@ -101,6 +101,10 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
     ?? periods.find((p) => p.isActive) ?? periods[0] ?? null;
   const indicators = listIndicators();
   const allLecturers = listLecturers();
+  // Lecturers flagged "excluded from KPI" drop out of every aggregate below
+  // (rollup, per-department, pipeline, PhD headcount, the per-lecturer table).
+  const excludedIds = new Set(allLecturers.filter((l) => l.excludedFromKpi).map((l) => l.id));
+  const kpiLecturers = allLecturers.filter((l) => !excludedIds.has(l.id));
   const boMonName = new Map<number, string>();
   const boMon = listBoMon();
   boMon.forEach((b) => boMonName.set(b.id, b.nameVi));
@@ -108,7 +112,7 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
   const papers = listPapers();
   const development = listDevelopment();
 
-  const ranks: LecturerRank[] = allLecturers.map((l) => ({ id: l.id, academicRank: (l.academicRank ?? "ThS") as AcademicRank }));
+  const ranks: LecturerRank[] = kpiLecturers.map((l) => ({ id: l.id, academicRank: (l.academicRank ?? "ThS") as AcademicRank }));
   const phdActual = ranks.filter((r) => r.academicRank === "PGS.TS" || r.academicRank === "TS").length
     + listDevelopmentCompletedIds().filter((id) => {
         const r = ranks.find((x) => x.id === id);
@@ -132,7 +136,7 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
     // Per-department rollups (skip departments with no lecturers).
     boMonRollups = boMon
       .map((bm) => {
-        const bmLecturers = allLecturers.filter((l) => (l.boMonId ?? null) === bm.id);
+        const bmLecturers = kpiLecturers.filter((l) => (l.boMonId ?? null) === bm.id);
         const bmRanks: LecturerRank[] = bmLecturers.map((l) => ({ id: l.id, academicRank: (l.academicRank ?? "ThS") as AcademicRank }));
         const bmFt = allFacultyTargets
           .filter((t) => t.boMonId === bm.id)
@@ -146,10 +150,17 @@ export async function getReportData(periodId?: number): Promise<ReportData> {
       })
       .filter((b) => b.headcount > 0);
 
-    // Submission pipeline for papers attributed to this period (conference year).
-    pipeline = computePipeline(papers.filter((p) => paperInPeriod(p, period)));
+    // Submission pipeline for papers attributed to this period (conference year),
+    // excluding papers single-credited to an excluded lecturer.
+    const ownerOf = (p: Paper) => p.creditedLecturerId ?? p.lecturerIds?.[0] ?? null;
+    pipeline = computePipeline(
+      papers.filter((p) => paperInPeriod(p, period)).filter((p) => {
+        const o = ownerOf(p);
+        return o == null || !excludedIds.has(o);
+      })
+    );
 
-    for (const l of allLecturers) {
+    for (const l of kpiLecturers) {
       const row = computeKpiRow(l.id, period, indicators, targets, papers);
       lecturers.push({
         id: l.id,
@@ -192,12 +203,14 @@ export async function getReportRangeData(from: number, to: number): Promise<Repo
   const periods = periodsAll.filter((p) => p.startYear >= from && p.startYear <= to);
   const indicators = listIndicators();
   const allLecturers = listLecturers();
+  const excludedIds = new Set(allLecturers.filter((l) => l.excludedFromKpi).map((l) => l.id));
+  const kpiLecturers = allLecturers.filter((l) => !excludedIds.has(l.id));
   const boMonName = new Map<number, string>();
   listBoMon().forEach((b) => boMonName.set(b.id, b.nameVi));
   const allPapers = listPapers();
   const development = listDevelopment();
 
-  const ranks: LecturerRank[] = allLecturers.map((l) => ({
+  const ranks: LecturerRank[] = kpiLecturers.map((l) => ({
     id: l.id, academicRank: (l.academicRank ?? "ThS") as AcademicRank,
   }));
   const completed = new Set(listDevelopmentCompletedIds());
@@ -231,7 +244,7 @@ export async function getReportRangeData(from: number, to: number): Promise<Repo
       a.totalActual += rr.totalActual;
       if (rr.facultyTarget != null) a.facultyTarget = (a.facultyTarget ?? 0) + rr.facultyTarget;
     });
-    for (const l of allLecturers) {
+    for (const l of kpiLecturers) {
       const row = computeKpiRow(l.id, period, indicators, targets, allPapers);
       const map = lecturerCells.get(l.id) ?? new Map<number, { actual: number; target: number | null }>();
       row.cells.forEach((c) => {
@@ -248,7 +261,7 @@ export async function getReportRangeData(from: number, to: number): Promise<Repo
       a.facultyTarget && a.facultyTarget > 0 ? Math.round((a.totalActual / a.facultyTarget) * 100) : null;
   });
 
-  const lecturers: ReportLecturer[] = allLecturers.map((l) => {
+  const lecturers: ReportLecturer[] = kpiLecturers.map((l) => {
     const cmap = lecturerCells.get(l.id);
     const cells = indicators.map((i) => {
       const cur = cmap?.get(i.id);

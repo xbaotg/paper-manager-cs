@@ -281,6 +281,16 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+
+  // --- Per-lecturer "exclude from KPI" flag. ---
+  // When set, the lecturer still appears everywhere but is dropped from every
+  // aggregate statistic (faculty rollup, dashboard, reports, leaderboards).
+  {
+    id: "0013_lecturer_excluded_from_kpi",
+    up: (db) => {
+      addColumnIfMissing(db, "lecturers", "excluded_from_kpi", "excluded_from_kpi INTEGER NOT NULL DEFAULT 0");
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

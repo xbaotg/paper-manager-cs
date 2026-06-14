@@ -21,6 +21,7 @@ import { ensureVenuesHydrated } from "@/lib/queries/venues";
 import { listLecturers } from "@/lib/queries/lecturers";
 import { listDevelopmentCompletedIds } from "@/lib/queries/development";
 import { RANK_PUBLICATION_TARGET, INDICATOR_CODE } from "@/lib/kpi-policy";
+import { logAction } from "@/lib/logger";
 import {
   academicYearLabel,
   computeKpiRow,
@@ -103,11 +104,15 @@ export async function getManagerKpi(periodId?: number): Promise<ManagerKpiData> 
   const facultyTargets = listFacultyTargets(selected.id);
   const phdCompleted = new Set(listDevelopmentCompletedIds());
 
-  const ranks: LecturerRank[] = lecturers.map((l) => ({ id: l.id, academicRank: l.academicRank }));
-  const rows: KpiRow[] = lecturers.map((l) =>
+  // Lecturers flagged "excluded from KPI" still appear in `lecturers` (for name
+  // lookups) but are dropped from every aggregate: rollup, rows, pipeline, PhD.
+  const excludedIds = new Set(listLecturers().filter((l) => l.excludedFromKpi).map((l) => l.id));
+  const active = lecturers.filter((l) => !excludedIds.has(l.id));
+  const ranks: LecturerRank[] = active.map((l) => ({ id: l.id, academicRank: l.academicRank }));
+  const rows: KpiRow[] = active.map((l) =>
     computeKpiRow(l.id, selected, indicators, targets, papers)
   );
-  const pipeline: PipelineRow[] = lecturers.map((l) =>
+  const pipeline: PipelineRow[] = active.map((l) =>
     computePipelineRow(l.id, selected, papers)
   );
   const rollup = computeFacultyRollup(
@@ -139,6 +144,7 @@ export async function createPeriodAction(
     return { ok: false, error: "Kỳ KPI đã tồn tại." };
   }
   const id = createPeriod(label, startYear, startYear + 1);
+  await logAction("kpi.period_create", { periodId: id, startYear });
   revalidatePath("/admin/kpi");
   return { ok: true, data: await getManagerKpi(id) };
 }
@@ -148,6 +154,7 @@ export async function deletePeriodAction(
 ): Promise<{ ok: boolean; data?: ManagerKpiData }> {
   await requireManager();
   deletePeriod(periodId);
+  await logAction("kpi.period_delete", { periodId });
   revalidatePath("/admin/kpi");
   return { ok: true, data: await getManagerKpi() };
 }
@@ -162,6 +169,7 @@ export async function upsertTargetAction(
   if (!getPeriodById(periodId)) return { ok: false, error: "Kỳ KPI không tồn tại." };
   if (value < 0 || !Number.isFinite(value)) return { ok: false, error: "Giá trị không hợp lệ." };
   upsertTarget(periodId, indicatorId, lecturerId, value, me.id);
+  await logAction("kpi.target_upsert", { periodId, indicatorId, lecturerId, value });
   revalidatePath("/admin/kpi");
   return { ok: true, data: await getManagerKpi(periodId) };
 }
@@ -177,6 +185,7 @@ export async function upsertFacultyTargetAction(
   if (!getPeriodById(periodId)) return { ok: false, error: "Kỳ KPI không tồn tại." };
   if (value < 0 || !Number.isFinite(value)) return { ok: false, error: "Giá trị không hợp lệ." };
   upsertFacultyTarget(periodId, indicatorId, boMonId, value, me.id);
+  await logAction("kpi.faculty_target_upsert", { periodId, indicatorId, boMonId, value });
   revalidatePath("/admin/kpi");
   return { ok: true, data: await getManagerKpi(periodId) };
 }
@@ -196,6 +205,7 @@ export async function seedRankTargetsAction(
     const target = RANK_PUBLICATION_TARGET[rank] ?? 0;
     if (target > 0) upsertTarget(periodId, scopus.id, l.id, target, me.id);
   }
+  await logAction("kpi.seed_rank_targets", { periodId });
   revalidatePath("/admin/kpi");
   return { ok: true, data: await getManagerKpi(periodId) };
 }
@@ -243,8 +253,10 @@ export async function getHeadKpi(periodId?: number): Promise<HeadKpiData> {
   const targets = listTargetsForPeriod(selected.id);
   const facultyTargets = listFacultyTargets(selected.id);
   const phdCompleted = new Set(listDevelopmentCompletedIds());
-  const ranks: LecturerRank[] = lecturers.map((l) => ({ id: l.id, academicRank: l.academicRank }));
-  const rows = lecturers.map((l) => computeKpiRow(l.id, selected, indicators, targets, papers));
+  const excludedIds = new Set(listLecturers().filter((l) => l.excludedFromKpi).map((l) => l.id));
+  const active = lecturers.filter((l) => !excludedIds.has(l.id));
+  const ranks: LecturerRank[] = active.map((l) => ({ id: l.id, academicRank: l.academicRank }));
+  const rows = active.map((l) => computeKpiRow(l.id, selected, indicators, targets, papers));
   const rollup = computeFacultyRollup(
     ranks, selected, indicators, targets, facultyScopeTargets(facultyTargets, boMonId), papers, phdCompleted
   );
