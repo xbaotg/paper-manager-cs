@@ -61,6 +61,7 @@ export interface LlkhGiaiThuong {
 
 export interface LlkhProfile {
   // I. THÔNG TIN CHUNG
+  photo: string;               // ảnh 4x6, data URI (base64), shown in the export header
   dob: string;                 // ngày sinh
   gender: string;              // Nam | Nữ
   truong: string;              // trường / viện
@@ -102,6 +103,7 @@ export interface LlkhProfile {
 }
 
 export const EMPTY_LLKH: LlkhProfile = {
+  photo: "",
   dob: "",
   gender: "",
   truong: "Trường Đại học Công nghệ Thông tin (ĐHQG-HCM)",
@@ -144,6 +146,7 @@ export function normalizeLlkh(raw: unknown): LlkhProfile {
     ...EMPTY_LLKH,
     ...o,
     // Re-coerce the scalar string fields (guard against null/number).
+    photo: str(o.photo),
     dob: str(o.dob), gender: str(o.gender),
     truong: str(o.truong) || EMPTY_LLKH.truong,
     khoa: str(o.khoa) || EMPTY_LLKH.khoa,

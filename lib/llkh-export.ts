@@ -17,6 +17,11 @@ export interface LlkhExportInput {
   profile: LlkhProfile;
   papers: Paper[];
   dateStr?: string; // "14 tháng 05 năm 2018" — caller supplies (no Date in lib helpers elsewhere)
+  // When true, render for print-to-PDF: zero @page margins (so the browser does
+  // NOT add its date/URL/page-number header & footer) with the page margins moved
+  // to inner padding instead. The Word (.doc) path leaves this false so Word keeps
+  // real page-setup margins.
+  forPdf?: boolean;
 }
 
 function esc(s: unknown): string {
@@ -199,7 +204,7 @@ function daoTaoTable(P: LlkhProfile): string {
 }
 
 export function buildLlkhHtml(input: LlkhExportInput): string {
-  const { lecturerName, lecturerTitle, profile: P, papers, dateStr } = input;
+  const { lecturerName, lecturerTitle, profile: P, papers, dateStr, forPdf } = input;
   const cls = classifyPapers(papers);
   const fullName = `${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`;
   const isiFlag = (p: Paper) => (isVenueScopus(p.venue) ? "ISI" : "");
@@ -246,7 +251,7 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
       <td class="mau">Mẫu D03</td>
     </tr>
   </table>
-  <div class="photo">Ảnh<br/>4x6</div>
+  ${P.photo ? `<div class="photo has-img"><img src="${P.photo}" alt="Ảnh 4x6" /></div>` : `<div class="photo">Ảnh<br/>4x6</div>`}
   <div class="center titleblock">
     <h1>LÝ LỊCH KHOA HỌC</h1>
     <p class="note">(Thông tin trong 5 năm gần nhất và có liên quan trực tiếp đến đề tài/dự án đăng ký)</p>
@@ -337,10 +342,16 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
     </td>
   </tr></table>`;
 
-  const styles = `
-    @page WordSection1 { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 3cm; }
+  const pageCss = forPdf
+    ? `@page { size: 21cm 29.7cm; margin: 0; }
+    div.WordSection1 { padding: 1.4cm 2cm 1.6cm 2.5cm; box-sizing: border-box; }
+    body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4;margin:0}`
+    : `@page WordSection1 { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 3cm; }
     div.WordSection1 { page: WordSection1; }
-    body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4}
+    body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4}`;
+
+  const styles = `
+    ${pageCss}
     .center{text-align:center}
     table.head{width:100%;border-collapse:collapse;margin:0}
     table.head td{border:none;padding:0;vertical-align:top}
@@ -351,6 +362,8 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
     .org.b{font-weight:bold;text-transform:uppercase}
     .mau{text-align:right;font-style:italic;font-size:12pt;white-space:nowrap}
     .photo{float:right;border:1px solid #000;width:2.6cm;height:3.4cm;line-height:1.3;font-size:12pt;text-align:center;padding-top:1.1cm;box-sizing:border-box;margin:4px 0 6px}
+    .photo.has-img{padding:0;overflow:hidden}
+    .photo.has-img img{width:100%;height:100%;object-fit:cover;display:block}
     .titleblock{clear:none}
     h1{font-size:17pt;font-weight:bold;margin:6px 0 2px;text-transform:uppercase}
     .note{font-style:italic;font-size:12.5pt;margin:0 0 10px;color:#c00000}

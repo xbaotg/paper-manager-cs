@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Plus, Trash2, Printer, FileDown, ScrollText } from "lucide-react";
+import { ArrowLeft, Save, Plus, Trash2, Printer, FileDown, ScrollText, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,10 +136,51 @@ export function LlkhEditor({
 }) {
   const [P, setP] = useState<LlkhProfile>(initial.profile);
   const [pending, startTransition] = useTransition();
+  const photoRef = useRef<HTMLInputElement>(null);
   const { lecturerName, lecturerTitle, papers } = initial;
 
   function set<K extends keyof LlkhProfile>(key: K, value: LlkhProfile[K]) {
     setP((prev) => ({ ...prev, [key]: value }));
+  }
+
+  // Read a 4x6 portrait, downscale to <=600px (keeps the saved blob small since
+  // it lives in the profile JSON), store as a JPEG data URI used in the export.
+  function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn một file ảnh (JPG/PNG).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onload = () => {
+        const max = 600;
+        let { width, height } = img;
+        if (width > max || height > max) {
+          const s = max / Math.max(width, height);
+          width = Math.round(width * s);
+          height = Math.round(height * s);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          toast.error("Không xử lý được ảnh.");
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        set("photo", canvas.toDataURL("image/jpeg", 0.85));
+        toast.success("Đã tải ảnh 4x6");
+      };
+      img.onerror = () => toast.error("File ảnh không hợp lệ.");
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => toast.error("Không đọc được file.");
+    reader.readAsDataURL(file);
   }
 
   function handleSave() {
@@ -151,15 +192,18 @@ export function LlkhEditor({
     });
   }
 
-  async function buildHtml() {
+  async function buildHtml(forPdf = false) {
     await hydrateVenues();
-    return buildLlkhHtml({ lecturerName, lecturerTitle, profile: P, papers, dateStr: vietDate() });
+    return buildLlkhHtml({ lecturerName, lecturerTitle, profile: P, papers, dateStr: vietDate(), forPdf });
   }
 
-  async function handlePrint() {
-    const html = await buildHtml();
+  // Print-to-PDF. The forPdf layout zeroes the @page margins so the browser omits
+  // its own header/footer (date/URL/page numbers); the user picks "Lưu/Save as PDF"
+  // as the destination to download the file.
+  async function handleDownloadPdf() {
+    const html = await buildHtml(true);
     const w = window.open("", "_blank", "width=920,height=960");
-    if (!w) { toast.error("Trình duyệt chặn cửa sổ in. Hãy dùng nút Tải Word."); return; }
+    if (!w) { toast.error("Trình duyệt chặn cửa sổ. Hãy cho phép pop-up rồi thử lại."); return; }
     w.document.open();
     w.document.write(html + "<script>window.onload=function(){window.print();}<\/script>");
     w.document.close();
@@ -195,8 +239,8 @@ export function LlkhEditor({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handlePrint} className="cursor-pointer gap-1.5">
-            <Printer className="size-4" /> In / PDF
+          <Button variant="outline" onClick={handleDownloadPdf} className="cursor-pointer gap-1.5">
+            <Printer className="size-4" /> Tải PDF
           </Button>
           <Button variant="outline" onClick={handleDownloadDoc} className="cursor-pointer gap-1.5">
             <FileDown className="size-4" /> Tải Word
@@ -214,6 +258,30 @@ export function LlkhEditor({
 
       {/* I. THÔNG TIN CHUNG */}
       <Section title="I. Thông tin chung">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-[7.5rem] shrink-0 rounded-md border bg-muted/40 overflow-hidden flex items-center justify-center">
+            {P.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={P.photo} alt="Ảnh 4x6" className="w-full h-full object-cover" />
+            ) : (
+              <ImagePlus className="size-6 text-muted-foreground" />
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFile} />
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => photoRef.current?.click()} className="cursor-pointer gap-1.5">
+                <ImagePlus className="size-4" /> {P.photo ? "Đổi ảnh" : "Tải ảnh 4x6"}
+              </Button>
+              {P.photo && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => set("photo", "")} className="cursor-pointer gap-1.5 text-muted-foreground hover:text-destructive">
+                  <X className="size-4" /> Xoá
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ảnh chân dung 4x6 (JPG/PNG) — hiển thị ở góc phải LLKH khi xuất.</p>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Ngày sinh" value={P.dob} onChange={(v) => set("dob", v)} placeholder="VD: 27/06/1987" />
           <Field label="Nam/Nữ" value={P.gender} onChange={(v) => set("gender", v)} placeholder="Nam / Nữ" />
