@@ -2,18 +2,37 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { BookOpen, Menu, X, LogIn } from "lucide-react";
+import { BookOpen, Menu, X, LogIn, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getNavSession } from "@/app/actions";
+
+// Where "Trang của tôi" points, by role.
+function myPageHref(role: string): string {
+  if (role === "manager") return "/admin";
+  if (role === "head") return "/head";
+  return "/me";
+}
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState<{ role: string; lecturerId: number | null } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getNavSession()
+      .then((s) => { if (!cancelled) setSession(s); })
+      .catch(() => { /* anonymous — keep the login button */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const myHref = session ? myPageHref(session.role) : null;
 
   const links = [
     { label: "Tính năng", href: "/#features" },
@@ -49,12 +68,21 @@ export function Navbar() {
       </ul>
 
       <div className="hidden md:flex items-center gap-2">
-        <Link href="/login">
-          <Button size="sm" className="cursor-pointer">
-            <LogIn className="size-4" data-icon="inline-start" />
-            Đăng nhập
-          </Button>
-        </Link>
+        {myHref ? (
+          <Link href={myHref}>
+            <Button size="sm" className="cursor-pointer">
+              <UserRound className="size-4" data-icon="inline-start" />
+              Trang của tôi
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/login">
+            <Button size="sm" className="cursor-pointer">
+              <LogIn className="size-4" data-icon="inline-start" />
+              Đăng nhập
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Mobile toggle */}
@@ -82,12 +110,21 @@ export function Navbar() {
               </li>
             ))}
             <li>
-              <Link href="/login" onClick={() => setOpen(false)}>
-                <Button size="sm" className="w-full cursor-pointer">
-                  <LogIn className="size-4" data-icon="inline-start" />
-                  Đăng nhập
-                </Button>
-              </Link>
+              {myHref ? (
+                <Link href={myHref} onClick={() => setOpen(false)}>
+                  <Button size="sm" className="w-full cursor-pointer">
+                    <UserRound className="size-4" data-icon="inline-start" />
+                    Trang của tôi
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login" onClick={() => setOpen(false)}>
+                  <Button size="sm" className="w-full cursor-pointer">
+                    <LogIn className="size-4" data-icon="inline-start" />
+                    Đăng nhập
+                  </Button>
+                </Link>
+              )}
             </li>
           </ul>
         </div>
