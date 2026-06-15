@@ -15,6 +15,7 @@ import {
   CircleCheck,
   Eye,
   EyeOff,
+  UserCheck,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { LecturerForm } from "../_components/lecturer-form";
+import { LecturerAttributionDialog } from "../_components/lecturer-attribution-dialog";
 import { ConfirmDialog } from "../_components/confirm-dialog";
 import { type Lecturer, type Paper } from "@/lib/data";
 import type { BoMon } from "@/lib/queries/bo_mon";
@@ -51,6 +53,11 @@ export default function LecturersPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Lecturer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lecturer | null>(null);
+  const [attributionTarget, setAttributionTarget] = useState<Lecturer | null>(null);
+
+  function refreshPapers() {
+    getDatabase().then((db) => { setLecturers(db.lecturers); setPapers(db.papers); }).catch(() => {});
+  }
 
   useEffect(() => {
     Promise.all([getDatabase(), getBoMonOptions()]).then(([db, bm]) => {
@@ -295,6 +302,15 @@ export default function LecturersPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
+                          className="cursor-pointer opacity-60 hover:opacity-100 hover:text-primary"
+                          onClick={() => setAttributionTarget(lecturer)}
+                          title="Tìm & gán giảng viên vào các bài có tên trùng"
+                        >
+                          <UserCheck className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           className={`cursor-pointer opacity-60 hover:opacity-100 ${lecturer.excludedFromKpi ? "text-amber-600 opacity-100" : "hover:text-amber-600"}`}
                           onClick={() => handleToggleKpi(lecturer)}
                           title={lecturer.excludedFromKpi ? "Tính lại vào KPI" : "Loại khỏi thống kê KPI"}
@@ -366,6 +382,13 @@ export default function LecturersPage() {
         description={`Bạn có chắc chắn muốn xoá giảng viên "${deleteTarget?.name}"? Hành động này không thể hoàn tác.`}
         confirmLabel="Xoá"
         onConfirm={handleDelete}
+      />
+
+      <LecturerAttributionDialog
+        open={!!attributionTarget}
+        onOpenChange={(open) => { if (!open) setAttributionTarget(null); }}
+        lecturer={attributionTarget}
+        onApplied={refreshPapers}
       />
     </div>
   );
