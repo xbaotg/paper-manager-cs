@@ -106,7 +106,7 @@ export default function AdminDashboard() {
   const [filterLecturerYear, setFilterLecturerYear] = useState<string>("all");
   const [filterHasPapersOnly, setFilterHasPapersOnly] = useState(false);
   // Which KPI card's paper list is open in the drill-down dialog.
-  const [cardList, setCardList] = useState<"scopus" | "q1" | "pending" | null>(null);
+  const [cardList, setCardList] = useState<"scopus" | "q1" | "nonScopus" | "pending" | null>(null);
 
   // KPI achievement for the year tab — loaded lazily when a single year is selected.
   const [kpiYearData, setKpiYearData] = useState<ManagerKpiData | null>(null);
@@ -503,19 +503,17 @@ export default function AdminDashboard() {
           return p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue);
         }).length;
         const pending = filteredPapers.filter((p) => isPendingSubmission(p.submissionStatus)).length;
-        const accepted = filteredPapers.filter((p) => p.submissionStatus === "accepted" || p.submissionStatus === "published").length;
-        const denied = filteredPapers.filter((p) => p.submissionStatus === "denied").length;
-        const decisions = accepted + denied;
-        const acceptRate = decisions > 0 ? Math.round((accepted / decisions) * 100) : null;
+        const nonScopusCount = filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && !isVenueScopus(p.venue)).length;
         // Drill-down lists behind the clickable KPI cards.
         const isQ1Paper = (p: Paper) => (p.quartile ? p.quartile.toUpperCase().includes("Q1") : isVenueQ1(p.venue));
         const cardLists = {
           scopus: filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue)),
           q1: filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && isVenueScopus(p.venue) && isQ1Paper(p)),
+          nonScopus: filteredPapers.filter((p) => countsAsPublication(p.submissionStatus) && !isVenueScopus(p.venue)),
           pending: filteredPapers.filter((p) => isPendingSubmission(p.submissionStatus)),
         };
-        const cardTitles: Record<"scopus" | "q1" | "pending", string> = {
-          scopus: "Bài Scopus", q1: "Bài Q1", pending: "Đang chờ kết quả",
+        const cardTitles: Record<"scopus" | "q1" | "nonScopus" | "pending", string> = {
+          scopus: "Bài Scopus", q1: "Bài Q1", nonScopus: "Ngoài Scopus", pending: "Đang chờ kết quả",
         };
         const activeList = cardList ? cardLists[cardList] : [];
         return (
@@ -523,8 +521,8 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatsCard icon={FileText} label="Bài Scopus" value={scopusCount} subtext={`trong đó ${q1Count} bài Q1`} accentClass="text-blue-500 bg-blue-500/10" onClick={() => setCardList("scopus")} />
               <StatsCard icon={Trophy} label="Bài Q1" value={q1Count} subtext="Nằm trong nhóm Scopus" accentClass="text-emerald-500 bg-emerald-500/10" onClick={() => setCardList("q1")} />
+              <StatsCard icon={FileText} label="Ngoài Scopus" value={nonScopusCount} subtext="Đã chấp nhận, không thuộc Scopus" accentClass="text-slate-500 bg-slate-500/10" onClick={() => setCardList("nonScopus")} />
               <StatsCard icon={TrendingUp} label="Đang chờ kết quả" value={pending} subtext="Chưa chấp nhận (đã gửi/phản biện/rebuttal)" accentClass="text-amber-500 bg-amber-500/10" onClick={() => setCardList("pending")} />
-              <StatsCard icon={Users} label="Tỷ lệ chấp nhận" value={acceptRate == null ? "—" : `${acceptRate}%`} subtext={`${accepted} chấp nhận / ${denied} từ chối`} accentClass="text-indigo-500 bg-indigo-500/10" />
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
