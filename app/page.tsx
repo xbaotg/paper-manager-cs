@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Navbar } from "./_components/navbar";
 import { Hero } from "./_components/hero";
 import { PublicationsTable } from "./_components/publications-table";
 import { Statistics } from "./_components/statistics";
 import { Footer } from "./_components/footer";
-import { type Paper, type Lecturer } from "@/lib/data";
+import { type Paper, type Lecturer, countsAsPublication } from "@/lib/data";
 import { getDatabase } from "./actions";
 
 export default function Home() {
@@ -28,6 +28,14 @@ export default function Home() {
     });
   }, []);
 
+  // The public homepage is a showcase of real output — count + list only
+  // accepted/published papers (the in-review/denied pipeline is hidden, even for
+  // signed-in lecturers/admins who would otherwise see their own un-accepted ones).
+  const publishedPapers = useMemo(
+    () => papers.filter((p) => countsAsPublication(p.submissionStatus)),
+    [papers]
+  );
+
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -40,9 +48,9 @@ export default function Home() {
     <>
       <Navbar />
       <main className="flex-1">
-        <Hero papers={papers} />
-        <PublicationsTable papers={papers} lecturers={lecturers} />
-        <Statistics papers={papers} />
+        <Hero papers={publishedPapers} />
+        <PublicationsTable papers={publishedPapers} lecturers={lecturers} />
+        <Statistics papers={publishedPapers} />
       </main>
       <Footer />
     </>
