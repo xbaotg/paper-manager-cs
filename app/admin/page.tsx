@@ -155,16 +155,26 @@ export default function AdminDashboard() {
     [lecturers]
   );
 
-  const filteredPapers = useMemo(() => {
+  // Year/lecturer-filtered papers, EXCLUDED lecturers still included. The
+  // per-lecturer analytics table reads this so excluded lecturers still show their
+  // real numbers (just tagged + kept out of the aggregate totals).
+  const yearLecturerFiltered = useMemo(() => {
     return papers.filter((p) => {
       if (filterLecturerId !== null && !(p.lecturerIds || []).includes(filterLecturerId)) return false;
       if (filterStartYear !== "all" && p.year < parseInt(filterStartYear, 10)) return false;
       if (filterEndYear !== "all" && p.year > parseInt(filterEndYear, 10)) return false;
-      const owner = p.creditedLecturerId ?? p.lecturerIds?.[0] ?? null;
-      if (owner != null && excludedLecturerIds.has(owner)) return false;
       return true;
     });
-  }, [papers, filterLecturerId, filterStartYear, filterEndYear, excludedLecturerIds]);
+  }, [papers, filterLecturerId, filterStartYear, filterEndYear]);
+
+  // Aggregate stats (cards + every chart) additionally drop papers single-credited
+  // to an excluded-from-KPI lecturer.
+  const filteredPapers = useMemo(() => {
+    return yearLecturerFiltered.filter((p) => {
+      const owner = p.creditedLecturerId ?? p.lecturerIds?.[0] ?? null;
+      return !(owner != null && excludedLecturerIds.has(owner));
+    });
+  }, [yearLecturerFiltered, excludedLecturerIds]);
 
   // Derived Stats
   const hasFilters = filterLecturerId !== null || filterStartYear !== "all" || filterEndYear !== "all";
@@ -191,14 +201,15 @@ export default function AdminDashboard() {
     return stats;
   }, [filteredPapers, excludedLecturerIds]);
 
-  // Full lecturer analytics (for the table section)
+  // Full lecturer analytics (for the table section). Shows EVERY lecturer —
+  // including those excluded from KPI (their row is tagged) — from the non-excluded
+  // paper set so their individual numbers are real.
   const allLecturerAnalytics = useMemo(() => {
-    // Apply lecturer-specific year filter to papers before computing stats
     const basePapers = filterLecturerYear !== "all"
-      ? filteredPapers.filter((p) => p.year === parseInt(filterLecturerYear, 10))
-      : filteredPapers;
+      ? yearLecturerFiltered.filter((p) => p.year === parseInt(filterLecturerYear, 10))
+      : yearLecturerFiltered;
 
-    return lecturers.filter((l) => !excludedLecturerIds.has(l.id)).map((lecturer) => {
+    return lecturers.map((lecturer) => {
       // Only accepted / published papers count toward the analytics; the
       // in-progress pipeline (submitted / under_review / rebuttal) and denied
       // papers are excluded so the per-lecturer totals reflect real output.
@@ -236,7 +247,7 @@ export default function AdminDashboard() {
         papers: lecturerPapers,
       };
     });
-  }, [lecturers, filteredPapers, filterLecturerYear, excludedLecturerIds]);
+  }, [lecturers, yearLecturerFiltered, filterLecturerYear]);
 
   const filteredLecturerAnalytics = useMemo(() => {
     const q = lecturerSearch.toLowerCase();
@@ -902,6 +913,11 @@ export default function AdminDashboard() {
                           <div className="min-w-0">
                             <span className="text-sm font-medium truncate flex items-center gap-1">
                               {lecturer.name}
+                              {lecturer.excludedFromKpi && (
+                                <Badge variant="outline" className="text-[9px] px-1 py-0 shrink-0 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                                  Không tính KPI
+                                </Badge>
+                              )}
                             </span>
                             <p className="text-xs text-muted-foreground truncate md:hidden">{LECTURER_TITLE_LABELS[lecturer.title] || lecturer.title}</p>
                           </div>
