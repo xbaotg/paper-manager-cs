@@ -296,7 +296,7 @@ export default function PapersPage() {
             onClick={() => setScholarOpen(true)}
           >
             <GraduationCap className="size-4" data-icon="inline-start" />
-            Nhập từ Google Scholar
+            Nhập tự động (OpenAlex/Scholar)
           </Button>
           <Button
             className="cursor-pointer bg-cta text-cta-foreground hover:bg-cta/90"

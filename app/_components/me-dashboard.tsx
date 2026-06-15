@@ -144,7 +144,7 @@ export function MeDashboard({
             onClick={() => setScholarOpen(true)}
             className="cursor-pointer gap-1.5"
           >
-            <GraduationCap className="size-4" /> Nhập từ Google Scholar
+            <GraduationCap className="size-4" /> Nhập tự động (OpenAlex/Scholar)
           </Button>
           <Button
             onClick={() => { setEditing(null); setFormOpen(true); }}

@@ -191,44 +191,92 @@ export async function searchOpenAlex(
     const json = await res.json();
     if (!json.results) return [];
     
-    return json.results.map((item: any) => {
-      const rawAuthors = item.authorships ? item.authorships.map((a: any) => {
-          return a.author?.display_name || "";
-      }).filter(Boolean) : [];
-      
-      let doi = item.doi ? item.doi.replace("https://doi.org/", "").replace("http://dx.doi.org/", "") : "";
-      let venue = "";
-      let url = "";
-
-      if (item.primary_location) {
-        if (item.primary_location.source?.display_name) {
-          venue = item.primary_location.source.display_name;
-        } else if (item.primary_location.raw_source_name) {
-          venue = item.primary_location.raw_source_name;
-        }
-        if (item.primary_location.landing_page_url) {
-          url = item.primary_location.landing_page_url;
-        }
-      }
-
-      // If DOI URL is provided in OpenAlex but no landing page url
-      if (!url && item.doi) {
-          url = item.doi;
-      }
-
-      return matchPaperData(
-        item.title || "",
-        item.publication_year || "",
-        venue,
-        rawAuthors,
-        doi,
-        url,
-        lecturers,
-        authorAliases
-      );
-    });
+    return json.results.map((item: any) => openAlexWorkToParsed(item, lecturers, authorAliases));
   } catch (err) {
     console.error("Error fetching from OpenAlex", err);
     return [];
   }
+}
+
+// Map one OpenAlex `work` object to a matched ParsedBibtex (venue + author
+// mapping applied). Shared by the title search and the by-author fetch.
+function openAlexWorkToParsed(
+  item: any,
+  lecturers: Lecturer[],
+  authorAliases: Record<string, number>
+): ParsedBibtex {
+  const rawAuthors: string[] = item.authorships
+    ? item.authorships.map((a: any) => a.author?.display_name || "").filter(Boolean)
+    : [];
+  const doi = item.doi ? item.doi.replace("https://doi.org/", "").replace("http://dx.doi.org/", "") : "";
+  let venue = "";
+  let url = "";
+  if (item.primary_location) {
+    if (item.primary_location.source?.display_name) venue = item.primary_location.source.display_name;
+    else if (item.primary_location.raw_source_name) venue = item.primary_location.raw_source_name;
+    if (item.primary_location.landing_page_url) url = item.primary_location.landing_page_url;
+  }
+  if (!url && item.doi) url = item.doi;
+  return matchPaperData(item.title || "", item.publication_year || "", venue, rawAuthors, doi, url, lecturers, authorAliases);
+}
+
+export interface OpenAlexAuthorHit {
+  id: string; // "https://openalex.org/A123..."
+  name: string;
+  institution: string;
+  worksCount: number;
+}
+
+// Author lookup by name (CORS-friendly — runs in the browser).
+export async function searchOpenAlexAuthors(name: string): Promise<OpenAlexAuthorHit[]> {
+  try {
+    const res = await fetch(`https://api.openalex.org/authors?search=${encodeURIComponent(name)}&per-page=8`);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.results || [])
+      .map((a: any): OpenAlexAuthorHit => ({
+        id: a.id || "",
+        name: a.display_name || "",
+        institution:
+          a.last_known_institutions?.[0]?.display_name ||
+          a.affiliations?.[0]?.institution?.display_name ||
+          "",
+        worksCount: a.works_count || 0,
+      }))
+      .filter((a: OpenAlexAuthorHit) => a.id && a.name);
+  } catch (err) {
+    console.error("OpenAlex author search failed", err);
+    return [];
+  }
+}
+
+// Fetch ALL of an author's works (cursor-paginated) and map each to ParsedBibtex.
+// Runs client-side; OpenAlex sends CORS headers, so this avoids the server-side
+// Google Scholar block entirely.
+export async function fetchOpenAlexWorksByAuthor(
+  authorId: string,
+  lecturers: Lecturer[],
+  authorAliases: Record<string, number> = {}
+): Promise<ParsedBibtex[]> {
+  const id = authorId.split("/").pop() || authorId;
+  const out: ParsedBibtex[] = [];
+  let cursor: string | null = "*";
+  for (let guard = 0; guard < 25 && cursor; guard++) {
+    let json: any;
+    try {
+      const res = await fetch(
+        `https://api.openalex.org/works?filter=author.id:${encodeURIComponent(id)}&per-page=200&cursor=${encodeURIComponent(cursor)}&select=title,authorships,publication_year,primary_location,doi`
+      );
+      if (!res.ok) break;
+      json = await res.json();
+    } catch (err) {
+      console.error("OpenAlex works fetch failed", err);
+      break;
+    }
+    const results = json.results || [];
+    for (const item of results) out.push(openAlexWorkToParsed(item, lecturers, authorAliases));
+    cursor = json.meta?.next_cursor || null;
+    if (results.length === 0) break;
+  }
+  return out;
 }

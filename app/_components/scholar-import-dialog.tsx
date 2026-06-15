@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ import {
   Check,
   CircleAlert,
   Download,
+  Sparkles,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LecturerCombobox } from "./lecturer-combobox";
@@ -30,7 +32,15 @@ import {
   scanScholarProfileServer,
   type ScholarStagedPaper,
 } from "@/app/actions/scholar";
-import { addPapersBulkServer } from "@/app/actions";
+import { addPapersBulkServer, getDatabase } from "@/app/actions";
+import {
+  searchOpenAlexAuthors,
+  fetchOpenAlexWorksByAuthor,
+  type OpenAlexAuthorHit,
+  type ParsedBibtex,
+} from "@/lib/bibtex";
+import { findSimilarTitles } from "@/lib/text-match";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   SUBMISSION_STATUS_LABEL,
   type SubmissionStatus,
@@ -96,6 +106,26 @@ function isValid(it: EditItem): boolean {
   );
 }
 
+// Build an EditItem from an OpenAlex match, flagging likely duplicates against
+// the existing catalog (client-side, same threshold the Scholar scan uses).
+function parsedToEditItem(pb: ParsedBibtex, existingTitles: { id: number; title: string }[]): EditItem {
+  const dup = findSimilarTitles(pb.title, existingTitles, { threshold: 0.85, limit: 1 })[0] ?? null;
+  return {
+    title: pb.title,
+    year: pb.year === "" ? "" : String(pb.year),
+    venueCode: pb.venueMatch?.code ?? "",
+    venueRaw: pb.venueRaw,
+    doi: pb.doi ?? "",
+    url: pb.url ?? "",
+    authors: pb.authors,
+    duplicateOfId: dup?.id ?? null,
+    duplicateTitle: dup?.title ?? null,
+    source: "openalex",
+    include: dup == null,
+    status: "published",
+  };
+}
+
 export function ScholarImportDialog({
   open,
   onOpenChange,
@@ -110,6 +140,29 @@ export function ScholarImportDialog({
   const [page, setPage] = useState(0);
   const [importing, setImporting] = useState(false);
 
+  // OpenAlex (client-side) import: avoids the server-side Scholar block.
+  const [mode, setMode] = useState<"openalex" | "scholar">("openalex");
+  const [oaQuery, setOaQuery] = useState("");
+  const [oaSearching, setOaSearching] = useState(false);
+  const [oaAuthors, setOaAuthors] = useState<OpenAlexAuthorHit[] | null>(null);
+  const [oaFetching, setOaFetching] = useState(false);
+  const [aliases, setAliases] = useState<Record<string, number>>({});
+  const [existingTitles, setExistingTitles] = useState<{ id: number; title: string }[]>([]);
+
+  // Load aliases + existing titles once for client-side matching/dedup.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    getDatabase()
+      .then((db) => {
+        if (cancelled) return;
+        setAliases(db.authorAliases);
+        setExistingTitles(db.papers.map((p) => ({ id: p.id, title: p.title })));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
+
   const includedCount = items?.filter((i) => i.include).length ?? 0;
   const validCount = items?.filter((i) => i.include && isValid(i)).length ?? 0;
 
@@ -121,6 +174,52 @@ export function ScholarImportDialog({
     setPage(0);
     setScanning(false);
     setImporting(false);
+    setOaQuery("");
+    setOaAuthors(null);
+    setOaSearching(false);
+    setOaFetching(false);
+  }
+
+  // OpenAlex: find candidate authors by name.
+  async function handleOaSearch() {
+    if (!oaQuery.trim()) {
+      setError("Nhập tên tác giả để tìm trên OpenAlex.");
+      return;
+    }
+    setOaSearching(true);
+    setError("");
+    setOaAuthors(null);
+    setItems(null);
+    try {
+      const hits = await searchOpenAlexAuthors(oaQuery.trim());
+      setOaAuthors(hits);
+      if (hits.length === 0) setError("Không tìm thấy tác giả nào khớp trên OpenAlex.");
+    } catch {
+      setError("Lỗi khi tìm tác giả trên OpenAlex.");
+    } finally {
+      setOaSearching(false);
+    }
+  }
+
+  // OpenAlex: pull every work of the chosen author, match + dedup client-side.
+  async function handlePickAuthor(author: OpenAlexAuthorHit) {
+    setOaFetching(true);
+    setError("");
+    try {
+      const parsed = await fetchOpenAlexWorksByAuthor(author.id, lecturers, aliases);
+      if (parsed.length === 0) {
+        setError("Tác giả này chưa có công trình nào trên OpenAlex.");
+        return;
+      }
+      setProfileName(author.name);
+      setItems(parsed.map((pb) => parsedToEditItem(pb, existingTitles)));
+      setPage(0);
+      setOaAuthors(null);
+    } catch {
+      setError("Lỗi khi tải danh sách công trình từ OpenAlex.");
+    } finally {
+      setOaFetching(false);
+    }
   }
 
   function handleOpenChange(next: boolean, details?: { reason?: string }) {
@@ -235,55 +334,116 @@ export function ScholarImportDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GraduationCap className="size-5 text-indigo-500" />
-            Nhập từ Google Scholar
+            Nhập bài báo tự động
           </DialogTitle>
           <DialogDescription>
-            Dán link hồ sơ Google Scholar — hệ thống quét toàn bộ bài báo, dò tên hội nghị / tác giả / năm,
-            rồi để bạn kiểm tra lại từng bài trước khi thêm.
+            Quét toàn bộ công bố theo tác giả (OpenAlex — chạy từ trình duyệt, đỡ bị chặn) hoặc theo
+            link Google Scholar; hệ thống tự dò hội nghị / tác giả / năm để bạn kiểm tra trước khi thêm.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Step 1 — URL input */}
+        {/* Step 1 — source picker */}
         {!items && (
-          <div className="flex flex-col gap-4 py-3">
-            <div className="flex gap-2">
-              <Input
-                placeholder="https://scholar.google.com/citations?user=XXXXXXX"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleScan();
-                  }
-                }}
-                disabled={scanning}
-              />
-              <Button
-                onClick={handleScan}
-                disabled={scanning || !url.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
-              >
-                {scanning ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                <span className="ml-2">{scanning ? "Đang quét..." : "Quét"}</span>
-              </Button>
-            </div>
-            {scanning && (
-              <p className="text-xs text-muted-foreground">
-                Đang tải danh sách công bố và đối chiếu với kho dữ liệu — có thể mất ~10–20 giây cho hồ sơ nhiều bài.
-              </p>
-            )}
-            {error && (
-              <div className="text-sm text-destructive flex items-start gap-1.5 font-medium">
-                <AlertCircle className="size-4 mt-0.5 shrink-0" /> {error}
+          <Tabs value={mode} onValueChange={(v) => { setMode(v as "openalex" | "scholar"); setError(""); }} className="py-2">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="openalex">OpenAlex (đỡ bị chặn)</TabsTrigger>
+              <TabsTrigger value="scholar">Google Scholar</TabsTrigger>
+            </TabsList>
+
+            {/* OpenAlex — by author, client-side */}
+            <TabsContent value="openalex" className="flex flex-col gap-4 pt-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Tên tác giả (VD: Thanh Duc Ngo)"
+                  value={oaQuery}
+                  onChange={(e) => setOaQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleOaSearch(); } }}
+                  disabled={oaSearching || oaFetching}
+                />
+                <Button
+                  onClick={handleOaSearch}
+                  disabled={oaSearching || oaFetching || !oaQuery.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+                >
+                  {oaSearching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                  <span className="ml-2">{oaSearching ? "Đang tìm..." : "Tìm"}</span>
+                </Button>
               </div>
-            )}
-            <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground space-y-1">
-              <p className="font-medium text-foreground">Lưu ý</p>
-              <p>• Mở hồ sơ Scholar của giảng viên → sao chép link trên thanh địa chỉ (chứa <code className="font-mono">?user=</code>).</p>
-              <p>• Google Scholar có thể giới hạn truy cập tự động; nếu bị chặn, thử lại sau ít phút.</p>
-            </div>
-          </div>
+              {oaFetching && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" /> Đang tải toàn bộ công trình từ OpenAlex và đối chiếu...
+                </p>
+              )}
+              {error && (
+                <div className="text-sm text-destructive flex items-start gap-1.5 font-medium">
+                  <AlertCircle className="size-4 mt-0.5 shrink-0" /> {error}
+                </div>
+              )}
+              {oaAuthors && oaAuthors.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Chọn đúng tác giả để tải công trình:</p>
+                  <div className="grid gap-2 max-h-[320px] overflow-y-auto">
+                    {oaAuthors.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => handlePickAuthor(a)}
+                        disabled={oaFetching}
+                        className="text-left rounded-lg border p-3 hover:border-primary hover:bg-muted/40 transition-colors disabled:opacity-50"
+                      >
+                        <p className="font-medium text-sm">{a.name}</p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                          {a.institution && (<><Building2 className="size-3 shrink-0" /> {a.institution} · </>)}
+                          {a.worksCount} công trình
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground flex items-center gap-1.5"><Sparkles className="size-3.5 text-indigo-500" /> Vì sao OpenAlex?</p>
+                <p>• Chạy thẳng từ trình duyệt (CORS) — không qua server nên tránh bị Google Scholar chặn.</p>
+                <p>• Tìm theo tên → chọn đúng tác giả → tải toàn bộ công trình, tự dò venue + tác giả nội bộ.</p>
+              </div>
+            </TabsContent>
+
+            {/* Google Scholar — by profile URL, server-side (fallback) */}
+            <TabsContent value="scholar" className="flex flex-col gap-4 pt-3">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://scholar.google.com/citations?user=XXXXXXX"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleScan(); } }}
+                  disabled={scanning}
+                />
+                <Button
+                  onClick={handleScan}
+                  disabled={scanning || !url.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+                >
+                  {scanning ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                  <span className="ml-2">{scanning ? "Đang quét..." : "Quét"}</span>
+                </Button>
+              </div>
+              {scanning && (
+                <p className="text-xs text-muted-foreground">
+                  Đang tải danh sách công bố và đối chiếu với kho dữ liệu — có thể mất ~10–20 giây cho hồ sơ nhiều bài.
+                </p>
+              )}
+              {error && (
+                <div className="text-sm text-destructive flex items-start gap-1.5 font-medium">
+                  <AlertCircle className="size-4 mt-0.5 shrink-0" /> {error}
+                </div>
+              )}
+              <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium text-foreground">Lưu ý</p>
+                <p>• Mở hồ sơ Scholar của giảng viên → sao chép link trên thanh địa chỉ (chứa <code className="font-mono">?user=</code>).</p>
+                <p>• Google Scholar có thể giới hạn truy cập tự động; nếu bị chặn, dùng tab OpenAlex.</p>
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
 
         {/* Step 2 — paginated review */}
