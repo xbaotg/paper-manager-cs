@@ -18,6 +18,9 @@ services:
       # Bootstrap manager account, created on first boot if no users exist.
       INITIAL_ADMIN_USER: ${INITIAL_ADMIN_USER:-admin}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?set INITIAL_ADMIN_PASSWORD in .env}
+      # SerpApi key for Google Scholar import (optional — without it the import
+      # falls back to direct scraping, which Google rate-limits / 429s).
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
     volumes:
       # Persist the SQLite datastore across container rebuilds/restarts.
       - paper-data:/app/data
