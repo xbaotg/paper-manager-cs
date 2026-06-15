@@ -36,12 +36,12 @@ import type { Paper, Lecturer } from "@/lib/data";
 
 const ITEMS_PER_PAGE = 5;
 
-// Short Journal/Conference tag from the venue type (1/4 = conference, 2/3 =
-// journal; book/other gets no tag).
+// Journal/Conference tag from the venue type (1/4 = conference, 2/3 = journal;
+// book/other gets no tag).
 function venueTypeTag(code: string): { short: string; full: string; cls: string } | null {
   const t = getVenueByCode(code)?.type;
-  if (t === 1 || t === 4) return { short: "HN", full: "Hội nghị", cls: "bg-teal-500/10 text-teal-700 border-teal-500/20" };
-  if (t === 2 || t === 3) return { short: "TC", full: "Tạp chí", cls: "bg-purple-500/10 text-purple-700 border-purple-500/20" };
+  if (t === 1 || t === 4) return { short: "Conference", full: "Hội nghị", cls: "bg-teal-500/10 text-teal-700 border-teal-500/20" };
+  if (t === 2 || t === 3) return { short: "Journal", full: "Tạp chí", cls: "bg-purple-500/10 text-purple-700 border-purple-500/20" };
   return null;
 }
 
