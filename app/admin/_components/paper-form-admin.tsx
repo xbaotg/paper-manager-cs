@@ -63,9 +63,26 @@ function reconstructAuthors(
     .map((id) => lecturers.find((l) => l.id === id))
     .filter((l): l is Lecturer => !!l);
   const usedIds = new Set<number>();
-  const norm = (s: string) => s.trim().toLowerCase();
+  // Diacritic-insensitive, word-order-insensitive key so the verbatim author text
+  // re-links to its lecturer across romanizations: "Thanh Duc Ngo" and
+  // "Ngô Đức Thành" both reduce to "duc ngo thanh". Exact-string matching used to
+  // miss this, so the linked id got appended as a *second* chip (the duplicate).
+  const tokenKey = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "") // drop combining diacritics
+      .replace(/đ/gi, "d") // Đ/đ don't decompose under NFD
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean)
+      .sort()
+      .join(" ");
   const entries: AuthorEntry[] = names.map((name) => {
-    const match = linked.find((l) => !usedIds.has(l.id) && norm(l.name) === norm(name));
+    const key = tokenKey(name);
+    const match = key
+      ? linked.find((l) => !usedIds.has(l.id) && tokenKey(l.name) === key)
+      : undefined;
     if (match) {
       usedIds.add(match.id);
       return { type: "internal", id: match.id, name, email: match.email };
@@ -76,6 +93,22 @@ function reconstructAuthors(
     if (!usedIds.has(l.id)) entries.push({ type: "internal", id: l.id, name: l.name, email: l.email });
   }
   return entries;
+}
+
+// Open the editor with the paper's authors. Prefer the persisted ordered list
+// (authorLinks) — an exact round-trip of what add/import produced; only legacy
+// papers without it fall back to the lossy reconstruction.
+function authorsFromPaper(p: Paper, lecturers: Lecturer[]): AuthorEntry[] {
+  if (p.authorLinks && p.authorLinks.length > 0) {
+    return p.authorLinks.map((al): AuthorEntry => {
+      if (al.lecturerId != null) {
+        const l = lecturers.find((x) => x.id === al.lecturerId);
+        return { type: "internal", id: al.lecturerId, name: al.name, email: l?.email };
+      }
+      return { type: "external", name: al.name };
+    });
+  }
+  return reconstructAuthors(p.authors || "", p.lecturerIds || [], lecturers);
 }
 
 export function PaperFormAdmin({
@@ -129,9 +162,9 @@ export function PaperFormAdmin({
       setFirstAuthor(!!editingPaper.isFirstAuthor);
       setCorresponding(!!editingPaper.isCorrespondingAuthor);
 
-      // Rebuild the ordered author list from the verbatim names + linked ids, so
-      // the reorder UI opens with the real order and the internal chips intact.
-      setAuthors(reconstructAuthors(editingPaper.authors || "", editingPaper.lecturerIds || [], lecturers));
+      // Open with the EXACT saved author list (authorLinks) when present; legacy
+      // papers (saved before authors_json) fall back to the heuristic.
+      setAuthors(authorsFromPaper(editingPaper, lecturers));
     } else {
       setForm(emptyForm);
       setAuthors([]);
@@ -182,9 +215,14 @@ export function PaperFormAdmin({
       return;
     }
 
-    const allAuthors = authors.map((a) => a.name.trim()).filter(Boolean).join(", ");
+    // The ordered author list is the source of truth — persisted as authorLinks so
+    // editing later rebuilds the exact same chips. authors/lecturerIds are derived.
+    const authorLinks = authors
+      .map((a) => ({ name: a.name.trim(), lecturerId: a.type === "internal" ? (a as { id: number }).id : null }))
+      .filter((a) => a.name);
+    const allAuthors = authorLinks.map((a) => a.name).join(", ");
     const lecturerIds = [
-      ...new Set(authors.filter((a) => a.type === "internal").map((a) => (a as { id: number }).id)),
+      ...new Set(authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number)),
     ];
 
     // Only a linked internal author may hold the credit (enforced server-side too).
@@ -197,6 +235,7 @@ export function PaperFormAdmin({
       venue: form.venue.trim(),
       authors: allAuthors,
       lecturerIds,
+      authorLinks,
       doi: form.doi.trim() || undefined,
       url: form.url.trim() || undefined,
       abstract: form.abstract.trim() || undefined,

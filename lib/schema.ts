@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS papers (
   pub_month                INTEGER,                       -- nullable; refines academic-year attribution when known
   venue_code               TEXT NOT NULL DEFAULT '',
   authors                  TEXT NOT NULL DEFAULT '',
+  authors_json             TEXT NOT NULL DEFAULT '',         -- ordered [{name, lecturerId}] — faithful author↔lecturer links
   doi                      TEXT,
   url                      TEXT,
   abstract                 TEXT,

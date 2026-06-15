@@ -10,6 +10,7 @@ interface PaperRow {
   pub_month: number | null;
   venue_code: string;
   authors: string;
+  authors_json: string;
   doi: string | null;
   url: string | null;
   abstract: string | null;
@@ -20,7 +21,26 @@ interface PaperRow {
   submission_status: string;
 }
 
+// Parse the stored ordered author list. Returns undefined for legacy rows (no
+// authors_json), so the editor knows to fall back to its heuristic.
+function parseAuthorLinks(json: string): Paper["authorLinks"] | undefined {
+  if (!json) return undefined;
+  try {
+    const arr = JSON.parse(json);
+    if (!Array.isArray(arr) || arr.length === 0) return undefined;
+    return arr
+      .map((a) => ({
+        name: String(a?.name ?? "").trim(),
+        lecturerId: a?.lecturerId != null ? Number(a.lecturerId) : null,
+      }))
+      .filter((a) => a.name);
+  } catch {
+    return undefined;
+  }
+}
+
 function toPaper(r: PaperRow, lecturerIds: number[]): Paper {
+  const authorLinks = parseAuthorLinks(r.authors_json);
   return {
     id: r.id,
     title: r.title,
@@ -34,10 +54,25 @@ function toPaper(r: PaperRow, lecturerIds: number[]): Paper {
     isCorrespondingAuthor: !!r.is_corresponding_author,
     quartile: r.quartile,
     submissionStatus: (r.submission_status as Paper["submissionStatus"]) ?? "submitted",
+    ...(authorLinks ? { authorLinks } : {}),
     ...(r.doi ? { doi: r.doi } : {}),
     ...(r.url ? { url: r.url } : {}),
     ...(r.abstract ? { abstract: r.abstract } : {}),
   };
+}
+
+// authors_json is the source of truth when present: the flat `authors` string and
+// the lecturerIds set are derived from it so they can never drift.
+function deriveAuthors(p: Paper): { authors: string; lecturerIds: number[]; authorsJson: string } {
+  if (p.authorLinks && p.authorLinks.length > 0) {
+    const authors = p.authorLinks.map((a) => a.name.trim()).filter(Boolean).join(", ");
+    const linkIds = p.authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number);
+    // Union with any extra ids the caller attached (e.g. addPaperServer auto-links
+    // a lecturer to their own paper even when they aren't in the author byline).
+    const lecturerIds = [...new Set([...linkIds, ...(p.lecturerIds ?? [])])];
+    return { authors, lecturerIds, authorsJson: JSON.stringify(p.authorLinks) };
+  }
+  return { authors: p.authors ?? "", lecturerIds: p.lecturerIds ?? [], authorsJson: "" };
 }
 
 // One query for papers + one for all links, grouped in memory (avoids N+1).
@@ -113,39 +148,42 @@ function normalizeCredited(p: Paper): number | null {
 
 export function createPaper(p: Paper): void {
   const db = getDb();
+  const d = deriveAuthors(p);
   db.transaction(() => {
     db.prepare(
       `INSERT INTO papers
-         (id, title, year, pub_month, venue_code, authors, doi, url, abstract,
+         (id, title, year, pub_month, venue_code, authors, authors_json, doi, url, abstract,
           credited_lecturer_id, is_first_author, is_corresponding_author,
           quartile, submission_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       p.id,
       p.title,
       p.year,
       p.pubMonth ?? null,
       p.venue ?? "",
-      p.authors ?? "",
+      d.authors,
+      d.authorsJson,
       p.doi ?? null,
       p.url ?? null,
       p.abstract ?? null,
-      normalizeCredited(p),
+      normalizeCredited({ ...p, lecturerIds: d.lecturerIds }),
       p.isFirstAuthor ? 1 : 0,
       p.isCorrespondingAuthor ? 1 : 0,
       p.quartile ?? null,
       p.submissionStatus ?? "submitted"
     );
-    setPaperLecturers(p.id, p.lecturerIds ?? []);
+    setPaperLecturers(p.id, d.lecturerIds);
   })();
 }
 
 export function updatePaper(id: number, p: Paper): void {
   const db = getDb();
+  const d = deriveAuthors(p);
   db.transaction(() => {
     db.prepare(
       `UPDATE papers SET
-         title = ?, year = ?, pub_month = ?, venue_code = ?, authors = ?, doi = ?, url = ?, abstract = ?,
+         title = ?, year = ?, pub_month = ?, venue_code = ?, authors = ?, authors_json = ?, doi = ?, url = ?, abstract = ?,
          credited_lecturer_id = ?, is_first_author = ?, is_corresponding_author = ?,
          quartile = ?, submission_status = ?
        WHERE id = ?`
@@ -154,18 +192,19 @@ export function updatePaper(id: number, p: Paper): void {
       p.year,
       p.pubMonth ?? null,
       p.venue ?? "",
-      p.authors ?? "",
+      d.authors,
+      d.authorsJson,
       p.doi ?? null,
       p.url ?? null,
       p.abstract ?? null,
-      normalizeCredited(p),
+      normalizeCredited({ ...p, lecturerIds: d.lecturerIds }),
       p.isFirstAuthor ? 1 : 0,
       p.isCorrespondingAuthor ? 1 : 0,
       p.quartile ?? null,
       p.submissionStatus ?? "submitted",
       id
     );
-    setPaperLecturers(id, p.lecturerIds ?? []);
+    setPaperLecturers(id, d.lecturerIds);
   })();
 }
 

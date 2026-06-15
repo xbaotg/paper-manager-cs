@@ -32,11 +32,15 @@ export function PaperForm({ onSubmit, lecturers }: PaperFormProps) {
     e.preventDefault();
     if (!title || !year || !venue) return;
 
-    // Build authors string
-    const allAuthors = authors.map((a) => a.name).join(", ");
-    const lecturerIds = authors
-      .filter((a) => a.type === "internal")
-      .map((a: any) => a.id);
+    // Ordered author list is the source of truth (persisted as authorLinks so a
+    // later edit rebuilds the exact chips); authors/lecturerIds are derived.
+    const authorLinks = authors
+      .map((a) => ({ name: a.name.trim(), lecturerId: a.type === "internal" ? a.id : null }))
+      .filter((a) => a.name);
+    const allAuthors = authorLinks.map((a) => a.name).join(", ");
+    const lecturerIds = [
+      ...new Set(authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number)),
+    ];
 
     const paper: Paper = {
       id: Date.now(),
@@ -45,6 +49,7 @@ export function PaperForm({ onSubmit, lecturers }: PaperFormProps) {
       venue: venue.trim(),
       authors: allAuthors,
       lecturerIds,
+      authorLinks,
       doi: doi.trim() || undefined,
       url: url.trim() || undefined,
     };

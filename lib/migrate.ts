@@ -291,6 +291,17 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "lecturers", "excluded_from_kpi", "excluded_from_kpi INTEGER NOT NULL DEFAULT 0");
     },
   },
+
+  // --- Ordered author↔lecturer links. ---
+  // Persist the per-author internal links the add/import forms already produce, so
+  // editing a paper rebuilds the exact same list instead of re-guessing it from
+  // the flat authors string + the (orderless) paper_lecturers set.
+  {
+    id: "0014_papers_authors_json",
+    up: (db) => {
+      addColumnIfMissing(db, "papers", "authors_json", "authors_json TEXT NOT NULL DEFAULT ''");
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

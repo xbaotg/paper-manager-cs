@@ -285,20 +285,22 @@ export function ScholarImportDialog({
 
     const base = Date.now();
     const papers: Paper[] = valid.map((it, i) => {
+      // Ordered author list with per-author internal link — persisted so a later
+      // edit rebuilds the exact same chips. authors/lecturerIds are derived.
+      const authorLinks = it.authors
+        .map((a) => ({ name: a.rawName.trim(), lecturerId: a.mappedLecturerId ?? null }))
+        .filter((a) => a.name);
       const internalIds = Array.from(
-        new Set(
-          it.authors
-            .map((a) => a.mappedLecturerId)
-            .filter((v): v is number => v != null)
-        )
+        new Set(authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number))
       );
       return {
         id: base + i,
         title: it.title.trim(),
         year: parseInt(it.year.trim(), 10),
         venue: (it.venueCode || it.venueRaw).trim(),
-        authors: it.authors.map((a) => a.rawName).join(", "),
+        authors: authorLinks.map((a) => a.name).join(", "),
         lecturerIds: internalIds,
+        authorLinks,
         doi: it.doi.trim() || undefined,
         url: it.url.trim() || undefined,
         creditedLecturerId: null,

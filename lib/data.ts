@@ -128,6 +128,10 @@ export interface Paper {
   venue: string;
   authors: string;
   lecturerIds: number[];
+  // Ordered author list with per-author internal link (null = external). The
+  // faithful source the forms produce; `authors` + `lecturerIds` are derived from
+  // it. Optional: legacy papers saved before this was added don't have it.
+  authorLinks?: { name: string; lecturerId: number | null }[];
   doi?: string;
   url?: string;
   abstract?: string;
