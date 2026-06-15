@@ -66,8 +66,72 @@ function cleanVenue(s: string): string {
   return v.trim();
 }
 
-// Fetch + parse one or more pages of the public citations list.
+// Prefer SerpApi (reliable, handles Google's anti-bot) when SERPAPI_KEY is set;
+// otherwise fall back to the best-effort direct scrape.
 export async function fetchScholarProfile(userId: string): Promise<ScholarProfile> {
+  if (process.env.SERPAPI_KEY) return fetchScholarProfileViaSerpApi(userId);
+  return fetchScholarProfileDirect(userId);
+}
+
+// SerpApi Google-Scholar-Author engine. SerpApi does the scraping on their side,
+// so this works from a datacenter IP without CAPTCHA. Paginated via `start`.
+async function fetchScholarProfileViaSerpApi(userId: string): Promise<ScholarProfile> {
+  const key = process.env.SERPAPI_KEY!;
+  const papers: ScholarRawPaper[] = [];
+  let name = "";
+  const PAGE = 100; // SerpApi caps `num` at 100 for this engine
+  const MAX = 600;
+
+  for (let start = 0; start < MAX; start += PAGE) {
+    const url = `https://serpapi.com/search.json?engine=google_scholar_author&author_id=${encodeURIComponent(
+      userId
+    )}&hl=en&num=${PAGE}&start=${start}&api_key=${encodeURIComponent(key)}`;
+
+    let res: Response;
+    try {
+      res = await fetch(url, { cache: "no-store" });
+    } catch {
+      throw new Error("Không kết nối được tới SerpApi (mạng máy chủ).");
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let json: any;
+    try {
+      json = await res.json();
+    } catch {
+      throw new Error("SerpApi trả về dữ liệu không hợp lệ.");
+    }
+
+    if (!res.ok || json.error) {
+      if (start === 0) throw new Error(`SerpApi lỗi: ${json.error || res.status}.`);
+      break; // a later page failing just ends pagination
+    }
+
+    if (start === 0) name = (json.author?.name || "").trim();
+
+    const articles = Array.isArray(json.articles) ? json.articles : [];
+    if (articles.length === 0) break;
+
+    for (const a of articles) {
+      const title = (a.title || "").trim();
+      if (!title) continue;
+      const yearNum = parseInt(a.year, 10);
+      papers.push({
+        title,
+        authorsRaw: a.authors || "",
+        venueRaw: cleanVenue(a.publication || ""),
+        year: Number.isFinite(yearNum) ? yearNum : "",
+      });
+    }
+
+    if (articles.length < PAGE) break; // last page
+  }
+
+  return { name, papers };
+}
+
+// Fetch + parse one or more pages of the public citations list (no API key).
+async function fetchScholarProfileDirect(userId: string): Promise<ScholarProfile> {
   const papers: ScholarRawPaper[] = [];
   let name = "";
   const PAGE = 100;
