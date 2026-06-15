@@ -14,6 +14,7 @@ import { Save, RotateCcw, Plus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { listPaperTitlesServer } from "@/app/actions";
 import { findSimilarTitles } from "@/lib/text-match";
+import { reconstructAuthorLinks } from "@/lib/author-match";
 import {
   Select,
   SelectContent,
@@ -48,51 +49,22 @@ const emptyForm = {
   submissionStatus: "submitted" as SubmissionStatus,
 };
 
-// Rebuild the ordered author list from storage for editing: the verbatim names
-// string keeps the order, the lecturerIds carry the internal links. A name that
-// matches a linked lecturer becomes an internal chip (KPI still keys off the id,
-// not the name); the rest are external. Any linked id whose name isn't present in
-// the text is appended so no internal link is silently dropped.
+// Rebuild the ordered author list from storage for editing (legacy papers with no
+// authors_json). Delegates to the shared, containment-based matcher so a shortened
+// byline like "Tien Do" links to "Đỗ Văn Tiến" IN PLACE instead of leaving an
+// external chip and appending the full lecturer name as a duplicate.
 function reconstructAuthors(
   authorsStr: string,
   lecturerIds: number[],
   lecturers: Lecturer[]
 ): AuthorEntry[] {
-  const names = (authorsStr || "").split(",").map((n) => n.trim()).filter(Boolean);
-  const linked = lecturerIds
-    .map((id) => lecturers.find((l) => l.id === id))
-    .filter((l): l is Lecturer => !!l);
-  const usedIds = new Set<number>();
-  // Diacritic-insensitive, word-order-insensitive key so the verbatim author text
-  // re-links to its lecturer across romanizations: "Thanh Duc Ngo" and
-  // "Ngô Đức Thành" both reduce to "duc ngo thanh". Exact-string matching used to
-  // miss this, so the linked id got appended as a *second* chip (the duplicate).
-  const tokenKey = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "") // drop combining diacritics
-      .replace(/đ/gi, "d") // Đ/đ don't decompose under NFD
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ")
-      .split(/\s+/)
-      .filter(Boolean)
-      .sort()
-      .join(" ");
-  const entries: AuthorEntry[] = names.map((name) => {
-    const key = tokenKey(name);
-    const match = key
-      ? linked.find((l) => !usedIds.has(l.id) && tokenKey(l.name) === key)
-      : undefined;
-    if (match) {
-      usedIds.add(match.id);
-      return { type: "internal", id: match.id, name, email: match.email };
+  return reconstructAuthorLinks(authorsStr, lecturerIds, lecturers).map((al): AuthorEntry => {
+    if (al.lecturerId != null) {
+      const l = lecturers.find((x) => x.id === al.lecturerId);
+      return { type: "internal", id: al.lecturerId, name: al.name, email: l?.email };
     }
-    return { type: "external", name };
+    return { type: "external", name: al.name };
   });
-  for (const l of linked) {
-    if (!usedIds.has(l.id)) entries.push({ type: "internal", id: l.id, name: l.name, email: l.email });
-  }
-  return entries;
 }
 
 // Open the editor with the paper's authors. Prefer the persisted ordered list

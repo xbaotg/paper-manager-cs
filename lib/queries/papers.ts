@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb } from "../sqlite";
 import { KPI_PLAN_START_YEAR } from "../kpi";
+import { dedupeAuthorLinks } from "../author-match";
 import type { Paper } from "../data";
 
 interface PaperRow {
@@ -65,12 +66,14 @@ function toPaper(r: PaperRow, lecturerIds: number[]): Paper {
 // the lecturerIds set are derived from it so they can never drift.
 function deriveAuthors(p: Paper): { authors: string; lecturerIds: number[]; authorsJson: string } {
   if (p.authorLinks && p.authorLinks.length > 0) {
-    const authors = p.authorLinks.map((a) => a.name.trim()).filter(Boolean).join(", ");
-    const linkIds = p.authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number);
+    // Collapse any external+internal twin of the same person before storing.
+    const links = dedupeAuthorLinks(p.authorLinks);
+    const authors = links.map((a) => a.name.trim()).filter(Boolean).join(", ");
+    const linkIds = links.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number);
     // Union with any extra ids the caller attached (e.g. addPaperServer auto-links
     // a lecturer to their own paper even when they aren't in the author byline).
     const lecturerIds = [...new Set([...linkIds, ...(p.lecturerIds ?? [])])];
-    return { authors, lecturerIds, authorsJson: JSON.stringify(p.authorLinks) };
+    return { authors, lecturerIds, authorsJson: JSON.stringify(links) };
   }
   return { authors: p.authors ?? "", lecturerIds: p.lecturerIds ?? [], authorsJson: "" };
 }
