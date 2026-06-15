@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
-import { createLecturer, updateLecturer, deleteLecturer, setLecturerKpiExcluded, setLecturerAvatar, getLecturerById } from "@/lib/queries/lecturers";
+import { createLecturer, updateLecturer, deleteLecturer, setLecturerKpiExcluded, setLecturerHiddenFromHub, setLecturerAvatar, getLecturerById } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
@@ -142,13 +142,25 @@ export async function deleteLecturerServer(id: number): Promise<DatabaseSchema> 
   return readDatabase();
 }
 
-// Toggle whether a lecturer is excluded from every aggregate statistic. They stay
-// fully visible; only the KPI/dashboard/report totals stop counting them.
+// Toggle whether a lecturer is counted in the aggregate KPI stats. Turning KPI
+// OFF also defaults the lecturer to hidden in the public directory (and ON ->
+// shown); the directory visibility can then be overridden independently below.
 export async function setLecturerKpiExcludedServer(id: number, excluded: boolean): Promise<DatabaseSchema> {
   await requireManager();
   setLecturerKpiExcluded(id, excluded);
+  setLecturerHiddenFromHub(id, excluded);
   await logAction("lecturer.kpi_excluded", { lecturerId: id, excluded });
   // KPI/dashboard/report routes all derive from this.
+  revalidatePath("/", "layout");
+  return readDatabase();
+}
+
+// Toggle a lecturer's visibility in the public /hub/lecturers directory,
+// independent of their KPI flag.
+export async function setLecturerHiddenFromHubServer(id: number, hidden: boolean): Promise<DatabaseSchema> {
+  await requireManager();
+  setLecturerHiddenFromHub(id, hidden);
+  await logAction("lecturer.hidden_from_hub", { lecturerId: id, hidden });
   revalidatePath("/", "layout");
   return readDatabase();
 }

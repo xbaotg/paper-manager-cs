@@ -13,6 +13,7 @@ interface LecturerRow {
   bo_mon_id: number | null;
   avatar_url: string | null;
   excluded_from_kpi: number | null;
+  hidden_from_hub: number | null;
 }
 
 function toLecturer(r: LecturerRow): Lecturer {
@@ -27,6 +28,7 @@ function toLecturer(r: LecturerRow): Lecturer {
     boMonId: r.bo_mon_id,
     avatarUrl: r.avatar_url,
     excludedFromKpi: !!r.excluded_from_kpi,
+    hiddenFromHub: !!r.hidden_from_hub,
   };
 }
 
@@ -45,7 +47,7 @@ export function getLecturerById(id: number): Lecturer | null {
 export function createLecturer(l: Lecturer): void {
   getDb()
     .prepare(
-      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url, excluded_from_kpi) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url, excluded_from_kpi, hidden_from_hub) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       l.id,
@@ -57,7 +59,8 @@ export function createLecturer(l: Lecturer): void {
       l.academicRank ?? academicRankFromTitle(l.title),
       l.boMonId ?? null,
       l.avatarUrl ?? null,
-      l.excludedFromKpi ? 1 : 0
+      l.excludedFromKpi ? 1 : 0,
+      l.hiddenFromHub ? 1 : 0
     );
 }
 
@@ -67,6 +70,13 @@ export function setLecturerKpiExcluded(id: number, excluded: boolean): void {
   getDb()
     .prepare("UPDATE lecturers SET excluded_from_kpi = ? WHERE id = ?")
     .run(excluded ? 1 : 0, id);
+}
+
+// Toggle visibility in the public /hub/lecturers directory (independent of KPI).
+export function setLecturerHiddenFromHub(id: number, hidden: boolean): void {
+  getDb()
+    .prepare("UPDATE lecturers SET hidden_from_hub = ? WHERE id = ?")
+    .run(hidden ? 1 : 0, id);
 }
 
 // Set (or clear, with null) a lecturer's avatar. Used by the self/admin avatar

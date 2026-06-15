@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS lecturers (
   academic_rank TEXT NOT NULL DEFAULT 'ThS',          -- PGS.TS | TS | NCS | ThS | CN (normalized for KPI logic)
   bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL,
   avatar_url    TEXT,                                   -- profile photo URL; NULL -> UI shows initials
-  excluded_from_kpi INTEGER NOT NULL DEFAULT 0          -- 1 -> still shown but dropped from all aggregate stats
+  excluded_from_kpi INTEGER NOT NULL DEFAULT 0,         -- 1 -> dropped from all aggregate KPI stats
+  hidden_from_hub   INTEGER NOT NULL DEFAULT 0          -- 1 -> hidden from the public /hub/lecturers directory
 );
 
 CREATE TABLE IF NOT EXISTS papers (

@@ -13,6 +13,8 @@ import {
   ScrollText,
   CircleSlash,
   CircleCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +39,7 @@ import { LecturerForm } from "../_components/lecturer-form";
 import { ConfirmDialog } from "../_components/confirm-dialog";
 import { type Lecturer, type Paper } from "@/lib/data";
 import type { BoMon } from "@/lib/queries/bo_mon";
-import { getDatabase, addLecturerServer, updateLecturerServer, deleteLecturerServer, setLecturerKpiExcludedServer } from "@/app/actions";
+import { getDatabase, addLecturerServer, updateLecturerServer, deleteLecturerServer, setLecturerKpiExcludedServer, setLecturerHiddenFromHubServer } from "@/app/actions";
 import { getBoMonOptions } from "@/app/actions/bo_mon";
 
 export default function LecturersPage() {
@@ -119,7 +121,14 @@ export default function LecturersPage() {
     const next = !lecturer.excludedFromKpi;
     const db = await setLecturerKpiExcludedServer(lecturer.id, next);
     setLecturers(db.lecturers);
-    toast.success(next ? `Đã loại ${lecturer.name} khỏi thống kê KPI` : `Đã tính lại ${lecturer.name} vào KPI`);
+    toast.success(next ? `Đã tắt KPI cho ${lecturer.name} (mặc định ẩn khỏi trang giảng viên)` : `Đã bật lại KPI cho ${lecturer.name}`);
+  }
+
+  async function handleToggleHub(lecturer: Lecturer) {
+    const nextHidden = !lecturer.hiddenFromHub;
+    const db = await setLecturerHiddenFromHubServer(lecturer.id, nextHidden);
+    setLecturers(db.lecturers);
+    toast.success(nextHidden ? `Đã ẩn ${lecturer.name} khỏi trang giảng viên` : `Đã hiện ${lecturer.name} trên trang giảng viên`);
   }
 
   if (!loaded) {
@@ -237,6 +246,14 @@ export default function LecturersPage() {
                               Không tính KPI
                             </Badge>
                           )}
+                          {lecturer.hiddenFromHub && (
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] mt-0.5 ml-1 bg-slate-500/10 text-slate-600 border border-slate-500/20"
+                            >
+                              Ẩn khỏi Hub
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </TableCell>
@@ -283,6 +300,15 @@ export default function LecturersPage() {
                           title={lecturer.excludedFromKpi ? "Tính lại vào KPI" : "Loại khỏi thống kê KPI"}
                         >
                           {lecturer.excludedFromKpi ? <CircleCheck className="size-4" /> : <CircleSlash className="size-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className={`cursor-pointer opacity-60 hover:opacity-100 ${lecturer.hiddenFromHub ? "text-slate-600 opacity-100" : "hover:text-slate-600"}`}
+                          onClick={() => handleToggleHub(lecturer)}
+                          title={lecturer.hiddenFromHub ? "Hiện trên trang giảng viên" : "Ẩn khỏi trang giảng viên"}
+                        >
+                          {lecturer.hiddenFromHub ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </Button>
                         <Button
                           variant="ghost"

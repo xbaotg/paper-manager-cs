@@ -17,7 +17,8 @@ export interface Lecturer {
   academicRank?: AcademicRank;
   boMonId?: number | null;
   avatarUrl?: string | null; // profile photo URL (scraped from the faculty site); null -> initials fallback
-  excludedFromKpi?: boolean;  // true -> still shown, but excluded from every aggregate statistic
+  excludedFromKpi?: boolean;  // true -> excluded from every aggregate KPI statistic
+  hiddenFromHub?: boolean;    // true -> hidden from the public /hub/lecturers directory
 }
 
 export const ACADEMIC_RANK_LABELS: Record<AcademicRank, string> = {

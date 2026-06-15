@@ -302,6 +302,16 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "papers", "authors_json", "authors_json TEXT NOT NULL DEFAULT ''");
     },
   },
+
+  // --- Separate "hidden from the public directory" flag. ---
+  // Independent of excluded_from_kpi: turning KPI off defaults to also hiding the
+  // lecturer from /hub/lecturers, but the visibility can be toggled back on.
+  {
+    id: "0015_lecturer_hidden_from_hub",
+    up: (db) => {
+      addColumnIfMissing(db, "lecturers", "hidden_from_hub", "hidden_from_hub INTEGER NOT NULL DEFAULT 0");
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

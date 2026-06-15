@@ -29,9 +29,9 @@ export default function LecturersPage() {
   // count toward the headline total and per-year breakdown — matches the
   // lecturer profile; the in-progress/denied pipeline is excluded.
   const lecturerStats = useMemo(() => {
-    // Excluded-from-KPI lecturers still appear here — the flag only affects the
-    // faculty KPI aggregates (rollup/dashboard/reports), not this public directory.
-    return lecturers.map(lecturer => {
+    // Public directory hides lecturers flagged hiddenFromHub (separate from the
+    // KPI flag — turning KPI off defaults this on, but it can be re-enabled).
+    return lecturers.filter((l) => !l.hiddenFromHub).map(lecturer => {
       const lecturerPapers = papers.filter(
         p => p.lecturerIds?.includes(lecturer.id) && countsAsPublication(p.submissionStatus)
       );
