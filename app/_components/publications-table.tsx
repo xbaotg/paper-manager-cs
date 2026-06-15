@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search,
   ArrowUpDown,
@@ -31,9 +31,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getVenueByCode, hydrateVenues } from "@/lib/venues";
 import type { Paper, Lecturer } from "@/lib/data";
 
 const ITEMS_PER_PAGE = 5;
+
+// Short Journal/Conference tag from the venue type (1/4 = conference, 2/3 =
+// journal; book/other gets no tag).
+function venueTypeTag(code: string): { short: string; full: string; cls: string } | null {
+  const t = getVenueByCode(code)?.type;
+  if (t === 1 || t === 4) return { short: "HN", full: "Hội nghị", cls: "bg-teal-500/10 text-teal-700 border-teal-500/20" };
+  if (t === 2 || t === 3) return { short: "TC", full: "Tạp chí", cls: "bg-purple-500/10 text-purple-700 border-purple-500/20" };
+  return null;
+}
 
 type SortField = "title" | "year" | "venue" | "authors";
 type SortDir = "asc" | "desc";
@@ -51,6 +61,12 @@ export function PublicationsTable({
   const [filterYear, setFilterYear] = useState<string>("all");
   const [filterVenue, setFilterVenue] = useState<string>("all");
   const [page, setPage] = useState(1);
+  // Hydrate the venue catalog so the Journal/Conference tag resolves custom
+  // venues too (the static bundle only has the seed list). Re-render on success.
+  const [, bumpVenues] = useState(0);
+  useEffect(() => {
+    hydrateVenues().then(() => bumpVenues((v) => v + 1)).catch(() => {});
+  }, []);
 
   // Lecturer lookup
   const lecturerMap = useMemo(() => {
@@ -305,12 +321,26 @@ export function PublicationsTable({
                         </span>
                       </TableCell>
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
-                        <Badge
-                          variant="secondary"
-                          className="max-w-full h-auto whitespace-normal break-words leading-tight py-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 font-semibold shadow-sm"
-                        >
-                          {paper.venue}
-                        </Badge>
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge
+                            variant="secondary"
+                            className="max-w-full h-auto whitespace-normal break-words leading-tight py-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 font-semibold shadow-sm"
+                          >
+                            {paper.venue}
+                          </Badge>
+                          {(() => {
+                            const tag = venueTypeTag(paper.venue);
+                            return tag ? (
+                              <Badge
+                                variant="secondary"
+                                className={`h-auto px-1.5 py-0 text-[10px] font-medium border ${tag.cls}`}
+                                title={tag.full}
+                              >
+                                {tag.short}
+                              </Badge>
+                            ) : null;
+                          })()}
+                        </div>
                       </TableCell>
                       {/* Internal lecturers (Vietnamese names) — own column */}
                       <TableCell className="px-4 py-4 align-middle whitespace-normal">
