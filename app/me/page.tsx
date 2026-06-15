@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { MeDashboard } from "../_components/me-dashboard";
 import { MeKpi } from "../_components/me-kpi";
 import { MeDevelopment } from "../_components/me-development";
+import { AvatarUploader } from "../_components/avatar-uploader";
 
 export default async function MePage() {
   const user = await requireLecturer();
@@ -27,6 +28,10 @@ export default async function MePage() {
         <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" }) + " cursor-pointer gap-1.5"}>
           <Home className="size-4" /> Trang chủ
         </Link>
+      </div>
+      <div className="rounded-xl border bg-card p-5">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Ảnh đại diện</h2>
+        <AvatarUploader lecturerId={lecturerId} currentUrl={me?.avatarUrl} name={me?.name ?? user.username} />
       </div>
       <MeKpi initial={kpi} />
       <MeDevelopment item={dev} progress={devProgress} />

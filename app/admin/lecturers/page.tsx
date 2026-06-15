@@ -325,6 +325,9 @@ export default function LecturersPage() {
         onSave={handleSave}
         editingLecturer={editing}
         boMon={boMon}
+        onAvatarChange={(id, url) =>
+          setLecturers((prev) => prev.map((l) => (l.id === id ? { ...l, avatarUrl: url } : l)))
+        }
       />
 
       {/* Delete Confirmation */}

@@ -69,6 +69,14 @@ export function setLecturerKpiExcluded(id: number, excluded: boolean): void {
     .run(excluded ? 1 : 0, id);
 }
 
+// Set (or clear, with null) a lecturer's avatar. Used by the self/admin avatar
+// uploader — a data URI or external URL.
+export function setLecturerAvatar(id: number, avatarUrl: string | null): void {
+  getDb()
+    .prepare("UPDATE lecturers SET avatar_url = ? WHERE id = ?")
+    .run(avatarUrl, id);
+}
+
 export function updateLecturer(id: number, l: Lecturer): void {
   getDb()
     .prepare(

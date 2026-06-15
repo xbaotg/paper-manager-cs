@@ -26,6 +26,7 @@ import {
   academicRankFromTitle,
 } from "@/lib/data";
 import type { BoMon } from "@/lib/queries/bo_mon";
+import { AvatarUploader } from "@/app/_components/avatar-uploader";
 
 interface LecturerFormProps {
   open: boolean;
@@ -33,6 +34,8 @@ interface LecturerFormProps {
   onSave: (lecturer: Lecturer) => void;
   editingLecturer?: Lecturer | null;
   boMon: BoMon[];
+  // Avatar is persisted immediately (independent of Save); let the parent sync.
+  onAvatarChange?: (lecturerId: number, url: string) => void;
 }
 
 const emptyForm = {
@@ -51,6 +54,7 @@ export function LecturerForm({
   onSave,
   editingLecturer,
   boMon,
+  onAvatarChange,
 }: LecturerFormProps) {
   const [form, setForm] = useState(emptyForm);
 
@@ -108,6 +112,17 @@ export function LecturerForm({
             {editingLecturer ? "Chỉnh sửa giảng viên" : "Thêm giảng viên mới"}
           </DialogTitle>
         </DialogHeader>
+
+        {editingLecturer && (
+          <div className="border-b pb-4">
+            <AvatarUploader
+              lecturerId={editingLecturer.id}
+              currentUrl={editingLecturer.avatarUrl}
+              name={editingLecturer.name}
+              onChange={(url) => onAvatarChange?.(editingLecturer.id, url)}
+            />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5 mt-2">
           <div className="space-y-2">

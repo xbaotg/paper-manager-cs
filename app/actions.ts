@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
-import { createLecturer, updateLecturer, deleteLecturer, setLecturerKpiExcluded } from "@/lib/queries/lecturers";
+import { createLecturer, updateLecturer, deleteLecturer, setLecturerKpiExcluded, setLecturerAvatar, getLecturerById } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
 import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
@@ -151,6 +151,31 @@ export async function setLecturerKpiExcludedServer(id: number, excluded: boolean
   // KPI/dashboard/report routes all derive from this.
   revalidatePath("/", "layout");
   return readDatabase();
+}
+
+// Update a lecturer's avatar. A lecturer may change their OWN photo; a manager may
+// change anyone's. `avatarUrl` is a base64 data URI (uploaded) or "" to clear.
+export async function updateLecturerAvatarServer(
+  lecturerId: number,
+  avatarUrl: string
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Chưa đăng nhập." };
+  if (!canManage(user) && user.lecturerId !== lecturerId) {
+    return { ok: false, error: "Bạn chỉ có thể đổi ảnh của chính mình." };
+  }
+  if (!getLecturerById(lecturerId)) return { ok: false, error: "Không tìm thấy giảng viên." };
+
+  const val = avatarUrl.trim();
+  if (val && !/^(data:image\/|https?:\/\/)/.test(val)) {
+    return { ok: false, error: "Ảnh không hợp lệ." };
+  }
+  if (val.length > 4_000_000) return { ok: false, error: "Ảnh quá lớn." };
+
+  setLecturerAvatar(lecturerId, val || null);
+  await logAction("lecturer.avatar", { lecturerId, cleared: !val });
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 // Quickly reassign which internal author gets KPI credit for a paper. The new
