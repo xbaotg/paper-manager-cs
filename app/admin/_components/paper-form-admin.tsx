@@ -4,13 +4,14 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Save, RotateCcw, Plus, AlertTriangle } from "lucide-react";
+import { Save, RotateCcw, Plus, AlertTriangle, X, BadgeCheck } from "lucide-react";
 import { toast } from "sonner";
 import { listPaperTitlesServer } from "@/app/actions";
 import { findSimilarTitles } from "@/lib/text-match";
@@ -23,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AuthorshipInput, type AuthorEntry } from "@/app/_components/authorship-input";
+import { LecturerCombobox } from "@/app/_components/lecturer-combobox";
 import { VenuePicker } from "./venue-picker";
 import { BibtexImportDialog } from "@/app/_components/bibtex-import-dialog";
 import type { Paper, Lecturer, SubmissionStatus } from "@/lib/data";
@@ -95,7 +97,12 @@ export function PaperFormAdmin({
   // is derived from this on save; the internal links (for KPI) are the ids of the
   // "internal" entries — attribution keys off the id, not the displayed name.
   const [authors, setAuthors] = useState<AuthorEntry[]>([]);
-  const [creditedId, setCreditedId] = useState<string>("");
+  // The single credited lecturer (KPI). May be a byline author OR a lecturer who is
+  // not in the byline (counted for KPI but not shown as an author).
+  const [creditedId, setCreditedId] = useState<number | null>(null);
+  // Attributed lecturers who are NOT byline authors — counted for KPI but kept out
+  // of the author list. Seeded on edit from lecturerIds minus the internal authors.
+  const [extraKpiIds, setExtraKpiIds] = useState<number[]>([]);
   const [firstAuthor, setFirstAuthor] = useState(false);
   const [corresponding, setCorresponding] = useState(false);
   const [isBibtexOpen, setIsBibtexOpen] = useState(false);
@@ -130,24 +137,34 @@ export function PaperFormAdmin({
         quartile: editingPaper.quartile ?? "",
         submissionStatus: editingPaper.submissionStatus ?? "submitted",
       });
-      setCreditedId(editingPaper.creditedLecturerId != null ? String(editingPaper.creditedLecturerId) : "");
+      setCreditedId(editingPaper.creditedLecturerId ?? null);
       setFirstAuthor(!!editingPaper.isFirstAuthor);
       setCorresponding(!!editingPaper.isCorrespondingAuthor);
 
       // Open with the EXACT saved author list (authorLinks) when present; legacy
       // papers (saved before authors_json) fall back to the heuristic.
-      setAuthors(authorsFromPaper(editingPaper, lecturers));
+      const loadedAuthors = authorsFromPaper(editingPaper, lecturers);
+      setAuthors(loadedAuthors);
+
+      // Lecturers attributed for KPI but absent from the byline (the "counted but
+      // not an author" case) — preserve them across edits so re-saving never
+      // silently orphans them.
+      const authorIds = new Set(
+        loadedAuthors.filter((a) => a.type === "internal").map((a) => (a as { id: number }).id)
+      );
+      setExtraKpiIds((editingPaper.lecturerIds ?? []).filter((id) => !authorIds.has(id)));
     } else {
       setForm(emptyForm);
       setAuthors([]);
-      setCreditedId("");
+      setCreditedId(null);
+      setExtraKpiIds([]);
       setFirstAuthor(false);
       setCorresponding(false);
     }
   }, [editingPaper, open, lecturers]);
 
-  // Internal (faculty) authors are the only candidates for the single credit —
-  // the distinct internal entries from the ordered author list.
+  // Internal (faculty) authors from the ordered byline — the default credit
+  // candidates (the common case picks one of them).
   const internalAuthors = useMemo(() => {
     const seen = new Set<number>();
     const out: Lecturer[] = [];
@@ -160,14 +177,48 @@ export function PaperFormAdmin({
     return out;
   }, [authors, lecturers]);
 
-  // Update the author list; if the credited person is no longer an internal
-  // author, drop the credit (kept here rather than in an effect to avoid a
-  // cascading re-render).
+  const internalAuthorIds = useMemo(
+    () => new Set(internalAuthors.map((l) => l.id)),
+    [internalAuthors]
+  );
+
+  // Non-author KPI lecturers, resolved for display (stable order).
+  const extraKpiLecturers = useMemo(
+    () => extraKpiIds.map((id) => lecturers.find((l) => l.id === id)).filter((l): l is Lecturer => !!l),
+    [extraKpiIds, lecturers]
+  );
+
+  // The credited lecturer is counted for KPI but isn't in the byline.
+  const creditedIsExtra = creditedId != null && !internalAuthorIds.has(creditedId);
+
+  // Update the author list. Keep the credit while the credited person is still an
+  // internal author OR a non-author KPI lecturer; drop it only when they vanish
+  // entirely. Also drop any non-author KPI entry that just became a byline author
+  // (it's now tracked as an author — avoid double-listing).
   function handleAuthorsChange(next: AuthorEntry[]) {
     setAuthors(next);
-    if (creditedId && !next.some((a) => a.type === "internal" && String((a as { id: number }).id) === creditedId)) {
-      setCreditedId("");
+    const nextAuthorIds = new Set(
+      next.filter((a) => a.type === "internal").map((a) => (a as { id: number }).id)
+    );
+    setExtraKpiIds((prev) => prev.filter((id) => !nextAuthorIds.has(id)));
+    if (creditedId != null && !nextAuthorIds.has(creditedId) && !extraKpiIds.includes(creditedId)) {
+      setCreditedId(null);
     }
+  }
+
+  // Pick the single KPI-credited lecturer. When they aren't a byline author, also
+  // attach them to the paper's KPI set so the paper shows on their profile and
+  // they're a valid credit target (the "counted but not an author" case).
+  function handleCreditChange(next: number | null) {
+    setCreditedId(next);
+    if (next != null && !internalAuthorIds.has(next)) {
+      setExtraKpiIds((prev) => (prev.includes(next) ? prev : [...prev, next]));
+    }
+  }
+
+  function removeExtraKpi(id: number) {
+    setExtraKpiIds((prev) => prev.filter((x) => x !== id));
+    if (creditedId === id) setCreditedId(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -193,12 +244,16 @@ export function PaperFormAdmin({
       .map((a) => ({ name: a.name.trim(), lecturerId: a.type === "internal" ? (a as { id: number }).id : null }))
       .filter((a) => a.name);
     const allAuthors = authorLinks.map((a) => a.name).join(", ");
-    const lecturerIds = [
+    const authorLecturerIds = [
       ...new Set(authorLinks.filter((a) => a.lecturerId != null).map((a) => a.lecturerId as number)),
     ];
+    // The KPI set = internal authors ∪ non-author KPI lecturers. deriveAuthors
+    // unions these again server-side, so this is the faithful set.
+    const lecturerIds = [...new Set([...authorLecturerIds, ...extraKpiIds])];
 
-    // Only a linked internal author may hold the credit (enforced server-side too).
-    const credited = creditedId && lecturerIds.includes(Number(creditedId)) ? Number(creditedId) : null;
+    // The credited person must be in the KPI set — a byline author or a non-author
+    // KPI lecturer (enforced server-side too via normalizeCredited).
+    const credited = creditedId != null && lecturerIds.includes(creditedId) ? creditedId : null;
 
     const paper: Paper = {
       id: editingPaper?.id ?? Date.now(),
@@ -222,7 +277,8 @@ export function PaperFormAdmin({
     onOpenChange(false);
     setForm(emptyForm);
     setAuthors([]);
-    setCreditedId("");
+    setCreditedId(null);
+    setExtraKpiIds([]);
     setFirstAuthor(false);
     setCorresponding(false);
   }
@@ -363,26 +419,49 @@ export function PaperFormAdmin({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Cá nhân được tính kết quả (chỉ 1 người thuộc Khoa)
+                Cá nhân được tính KPI (chỉ 1 người thuộc Khoa)
               </label>
-              <Select
-                value={creditedId || "none"}
-                onValueChange={(v) => setCreditedId(v && v !== "none" ? v : "")}
-              >
-                <SelectTrigger className="h-11 cursor-pointer">
-                  <SelectValue placeholder="Chọn tác giả nội bộ..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="cursor-pointer">— Chưa xác định —</SelectItem>
-                  {internalAuthors.map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)} className="cursor-pointer">
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LecturerCombobox
+                lecturers={lecturers}
+                value={creditedId}
+                onChange={handleCreditChange}
+                priorityLecturers={internalAuthors}
+                nullOptionLabel="— Chưa xác định —"
+                placeholder="Tìm giảng viên được tính KPI..."
+              />
+              {creditedIsExtra && (
+                <p className="flex items-center gap-1 text-[11px] font-medium text-amber-600">
+                  <BadgeCheck className="size-3.5" /> Tính KPI · không phải tác giả trong bài
+                </p>
+              )}
+              {extraKpiLecturers.some((l) => l.id !== creditedId) && (
+                <div className="rounded-lg border border-dashed bg-background/60 p-2.5 space-y-1.5">
+                  <p className="text-[11px] text-muted-foreground">Cũng được tính KPI (không phải tác giả):</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {extraKpiLecturers
+                      .filter((l) => l.id !== creditedId)
+                      .map((l) => (
+                        <Badge
+                          key={l.id}
+                          variant="secondary"
+                          className="gap-1 bg-amber-500/10 text-amber-700 border border-amber-500/20 pr-1"
+                        >
+                          {l.title}. {l.name}
+                          <button
+                            type="button"
+                            onClick={() => removeExtraKpi(l.id)}
+                            className="rounded-sm p-0.5 hover:bg-amber-500/20 cursor-pointer"
+                            title="Bỏ khỏi danh sách tính KPI"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
-                Một bài chỉ được tính cho một cá nhân. Nếu có đồng tác giả ngoài Trường, chỉ tính khi là tác giả chính/liên hệ.
+                Mặc định chọn tác giả nội bộ trong bài (1 người). Cần tính KPI cho giảng viên không có trong danh sách tác giả? Gõ tên để tìm — họ vẫn được tính KPI nhưng không hiển thị là tác giả.
               </p>
             </div>
 

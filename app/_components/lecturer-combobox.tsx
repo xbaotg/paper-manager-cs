@@ -9,6 +9,9 @@ interface LecturerComboboxProps {
   value: number | null;
   onChange: (id: number | null) => void;
   topMatches?: { lecturer: Lecturer; score: number }[];
+  // Lecturers to surface first when there is no active search (e.g. the byline's
+  // internal authors). Shown without a match-score label, unlike `topMatches`.
+  priorityLecturers?: Lecturer[];
   placeholder?: string;
   isHighConfidence?: boolean;
   nullOptionLabel?: string;
@@ -19,6 +22,7 @@ export function LecturerCombobox({
   value,
   onChange,
   topMatches = [],
+  priorityLecturers = [],
   placeholder = "Tìm kiếm giảng viên...",
   isHighConfidence = false,
   nullOptionLabel = "Khách / Ngoài khoa",
@@ -43,8 +47,11 @@ export function LecturerCombobox({
     let result: any[] = [];
     
     if (!search.trim()) {
-      // Show top matches by default if no search
-      if (topMatches.length > 0) {
+      // No search: prefer the caller's priority list (e.g. byline authors), then
+      // fuzzy top matches, then the first handful of all lecturers.
+      if (priorityLecturers.length > 0) {
+        result = priorityLecturers;
+      } else if (topMatches.length > 0) {
         result = topMatches.map(m => m.lecturer);
       } else {
         result = lecturers.slice(0, 10);
@@ -61,7 +68,7 @@ export function LecturerCombobox({
     
     // Always insert null option at the top or bottom
     return [nullOption, ...result];
-  }, [search, lecturers, topMatches]);
+  }, [search, lecturers, topMatches, priorityLecturers]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {

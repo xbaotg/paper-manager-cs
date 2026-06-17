@@ -141,7 +141,7 @@ export function PaperManage({
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] text-muted-foreground">Chọn 1 tác giả nội bộ để tính kết quả KPI (mỗi bài chỉ tính cho 1 người).</p>
+                  <p className="text-[11px] text-muted-foreground">Chọn người được tính KPI (mỗi bài chỉ tính cho 1 người; có thể không phải tác giả).</p>
                 </div>
               ) : credited ? (
                 <Link href={`/lecturers/${credited.id}`} className="text-primary hover:underline">{credited.title}. {credited.name}</Link>
@@ -169,7 +169,7 @@ export function PaperManage({
 
           {internal.length > 0 && (
             <div className="pt-2 border-t border-border">
-              <div className="eyebrow-sm text-muted-foreground mb-2 inline-flex items-center gap-1"><Users className="size-3" /> Tác giả thuộc Khoa</div>
+              <div className="eyebrow-sm text-muted-foreground mb-2 inline-flex items-center gap-1"><Users className="size-3" /> Giảng viên được tính KPI</div>
               <div className="flex flex-wrap gap-2">
                 {internal.map((l) => (
                   <Link key={l.id} href={`/lecturers/${l.id}`} className="text-xs rounded-sm border border-border px-2 py-1 hover:border-primary hover:text-primary">
