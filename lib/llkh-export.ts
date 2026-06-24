@@ -389,11 +389,14 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   </tr></table>`;
 
   const pageCss = forPdf
-    ? // Zero the @page margin so the browser prints NO header/footer (date / URL /
-      // page numbers live in that margin box). Re-create normal margins as inner
-      // padding — same 2cm / 3cm-left as the Word export.
-      `@page { size: 21cm 29.7cm; margin: 0; }
-    div.WordSection1 { padding: 2cm 2cm 2cm 3cm; box-sizing: border-box; }
+    ? // Give every page a real top margin via @page (so content on pages 2+ does not
+      // butt against the top edge). Left/right/bottom stay as inner padding with a
+      // zero @page margin there, so the browser still prints NO footer / side chrome.
+      // The first page keeps ~2cm total top (1.3cm @page + 0.7cm padding). The top
+      // @page band is the one place a browser header (date/title) can appear — untick
+      // "Headers and footers" in the print dialog to hide it.
+      `@page { size: 21cm 29.7cm; margin: 1.3cm 0 0 0; }
+    div.WordSection1 { padding: 0.7cm 2cm 2cm 3cm; box-sizing: border-box; }
     body{font-family:"Times New Roman",serif;font-size:13pt;color:#000;line-height:1.4;margin:0}`
     : `@page WordSection1 { size: 21cm 29.7cm; margin: 2cm 2cm 2cm 3cm; }
     div.WordSection1 { page: WordSection1; }
