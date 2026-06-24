@@ -208,6 +208,16 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   const cls = classifyPapers(papers);
   const fullName = `${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`;
   const isiFlag = (p: Paper) => (isVenueScopus(p.venue) ? "ISI" : "");
+  // 11.2 Hướng nghiên cứu — prefer the row list, fall back to the legacy string.
+  const huongText = (P.huongNghienCuuList?.length
+    ? P.huongNghienCuuList
+    : P.huongNghienCuu
+      ? P.huongNghienCuu.split(/\r?\n/)
+      : []
+  )
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join("\n");
 
   // labelled field: "<b>label</b> value"
   const fld = (label: string, val: string) =>
@@ -291,12 +301,16 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   <p class="f"><b>11. Các lĩnh vực chuyên môn và hướng nghiên cứu</b></p>
   <div class="indent">
     <p class="f"><i>11.1 Lĩnh vực chuyên môn:</i></p>
-    <div class="indent">${fld("- Lĩnh vực:", P.linhVucChuyenMon)}
-    <p class="f"><b>- Chuyên ngành:</b></p>
-    <p class="f"><b>- Chuyên môn:</b></p></div>
+    <div class="indent">
+      ${fld("- Lĩnh vực:", P.linhVucChuyenMon)}
+      ${fld("- Chuyên ngành:", P.chuyenNganh)}
+      ${fld("- Chuyên môn:", P.chuyenMon)}
+    </div>
     <p class="f"><i>11.2 Hướng nghiên cứu:</i></p>
-    <div class="indent pre">${esc(P.huongNghienCuu)}</div>
+    <div class="indent pre">${esc(huongText)}</div>
   </div>
+  ${fld("12. Mã ORCID:", P.orcid)}
+  ${P.gioiThieu ? `<p class="f"><b>13. Giới thiệu:</b></p><div class="indent pre">${esc(P.gioiThieu)}</div>` : ""}
 
   <h2>II. NGHIÊN CỨU VÀ GIẢNG DẠY</h2>
   <p class="f"><b>1. Đề tài/dự án</b></p>

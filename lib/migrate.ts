@@ -312,6 +312,133 @@ const MIGRATIONS: Migration[] = [
       addColumnIfMissing(db, "lecturers", "hidden_from_hub", "hidden_from_hub INTEGER NOT NULL DEFAULT 0");
     },
   },
+
+  // --- Normalized LLKH activity sections (assemble-on-read / split-on-write). ---
+  // Move the four repeating CV sections (education, work history, projects,
+  // supervision) out of the lecturer_llkh JSON blob into real tables so reports can
+  // aggregate them. DDL is byte-identical to lib/schema.ts so fresh installs (which
+  // create these from SCHEMA_SQL) and upgraded DBs converge. Create-only here; the
+  // blob→table copy is the next migration.
+  {
+    id: "0016_llkh_activity_tables",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS lecturer_education (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          bac         TEXT NOT NULL DEFAULT '',
+          thoi_gian   TEXT NOT NULL DEFAULT '',
+          noi         TEXT NOT NULL DEFAULT '',
+          nganh       TEXT NOT NULL DEFAULT '',
+          luan_an     TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_lecturer_education_lecturer ON lecturer_education(lecturer_id);
+
+        CREATE TABLE IF NOT EXISTS lecturer_work_history (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          from_time   TEXT NOT NULL DEFAULT '',
+          to_time     TEXT NOT NULL DEFAULT '',
+          noi         TEXT NOT NULL DEFAULT '',
+          chuc_vu     TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_lecturer_work_history_lecturer ON lecturer_work_history(lecturer_id);
+
+        CREATE TABLE IF NOT EXISTS lecturer_projects (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          lecturer_id     INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+          sort_order      INTEGER NOT NULL DEFAULT 0,
+          ten             TEXT NOT NULL DEFAULT '',
+          ma_so           TEXT NOT NULL DEFAULT '',
+          thoi_gian       TEXT NOT NULL DEFAULT '',
+          kinh_phi        TEXT NOT NULL DEFAULT '',
+          vai_tro         TEXT NOT NULL DEFAULT '',
+          ngay_nghiem_thu TEXT NOT NULL DEFAULT '',
+          ket_qua         TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_lecturer_projects_lecturer ON lecturer_projects(lecturer_id);
+
+        CREATE TABLE IF NOT EXISTS lecturer_supervision (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+          sort_order  INTEGER NOT NULL DEFAULT 0,
+          ten         TEXT NOT NULL DEFAULT '',
+          luan_an     TEXT NOT NULL DEFAULT '',
+          nam_tn      TEXT NOT NULL DEFAULT '',
+          bac         TEXT NOT NULL DEFAULT '',
+          san_pham    TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_lecturer_supervision_lecturer ON lecturer_supervision(lecturer_id);
+      `);
+    },
+  },
+  {
+    // One-time copy of each lecturer's blob arrays (daoTao/congTac/deTai/huongDan)
+    // into the new tables, sort_order = array index. Guarded per-lecturer (skip a
+    // section that already has rows) so a re-run never double-inserts — on top of
+    // the ledger. After the next wizard save the blob arrays are stripped, so this
+    // is the only path that reads them.
+    id: "0017_llkh_backfill_sections",
+    up: (db) => {
+      const rows = db
+        .prepare("SELECT lecturer_id, data_json FROM lecturer_llkh")
+        .all() as { lecturer_id: number; data_json: string }[];
+
+      const insEdu = db.prepare(
+        `INSERT INTO lecturer_education (lecturer_id, sort_order, bac, thoi_gian, noi, nganh, luan_an)
+         VALUES (?,?,?,?,?,?,?)`
+      );
+      const insWork = db.prepare(
+        `INSERT INTO lecturer_work_history (lecturer_id, sort_order, from_time, to_time, noi, chuc_vu)
+         VALUES (?,?,?,?,?,?)`
+      );
+      const insProj = db.prepare(
+        `INSERT INTO lecturer_projects
+           (lecturer_id, sort_order, ten, ma_so, thoi_gian, kinh_phi, vai_tro, ngay_nghiem_thu, ket_qua)
+         VALUES (?,?,?,?,?,?,?,?,?)`
+      );
+      const insSup = db.prepare(
+        `INSERT INTO lecturer_supervision (lecturer_id, sort_order, ten, luan_an, nam_tn, bac, san_pham)
+         VALUES (?,?,?,?,?,?,?)`
+      );
+      const has = (table: string, lid: number) =>
+        db.prepare(`SELECT 1 FROM ${table} WHERE lecturer_id = ? LIMIT 1`).get(lid) != null;
+      const s = (v: unknown) => (typeof v === "string" ? v : "");
+
+      for (const r of rows) {
+        let o: Record<string, unknown> = {};
+        try {
+          const parsed = JSON.parse(r.data_json);
+          if (parsed && typeof parsed === "object") o = parsed as Record<string, unknown>;
+        } catch {
+          continue;
+        }
+        const lid = r.lecturer_id;
+        if (Array.isArray(o.daoTao) && !has("lecturer_education", lid)) {
+          (o.daoTao as Record<string, unknown>[]).forEach((d, i) =>
+            insEdu.run(lid, i, s(d.bac), s(d.thoiGian), s(d.noi), s(d.nganh), s(d.luanAn))
+          );
+        }
+        if (Array.isArray(o.congTac) && !has("lecturer_work_history", lid)) {
+          (o.congTac as Record<string, unknown>[]).forEach((c, i) =>
+            insWork.run(lid, i, s(c.from), s(c.to), s(c.noi), s(c.chucVu))
+          );
+        }
+        if (Array.isArray(o.deTai) && !has("lecturer_projects", lid)) {
+          (o.deTai as Record<string, unknown>[]).forEach((d, i) =>
+            insProj.run(lid, i, s(d.ten), s(d.maSo), s(d.thoiGian), s(d.kinhPhi), s(d.vaiTro), s(d.ngayNghiemThu), s(d.ketQua))
+          );
+        }
+        if (Array.isArray(o.huongDan) && !has("lecturer_supervision", lid)) {
+          (o.huongDan as Record<string, unknown>[]).forEach((h, i) =>
+            insSup.run(lid, i, s(h.ten), s(h.luanAn), s(h.namTN), s(h.bac), s(h.sanPham))
+          );
+        }
+      }
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

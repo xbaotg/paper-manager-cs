@@ -79,11 +79,16 @@ export interface LlkhProfile {
   faxCoQuan: string;
   dienThoaiCaNhan: string;
   email: string;
+  orcid: string;               // mã ORCID
+  gioiThieu: string;           // giới thiệu / tiểu sử
   ngoaiNgu: LlkhNgoaiNgu[];
   congTac: LlkhCongTac[];      // 9. thời gian công tác
   daoTao: LlkhDaoTao[];        // 10. quá trình đào tạo
-  linhVucChuyenMon: string;    // 11.1
-  huongNghienCuu: string;      // 11.2
+  linhVucChuyenMon: string;    // 11.1 - Lĩnh vực
+  chuyenNganh: string;         // 11.1 - Chuyên ngành
+  chuyenMon: string;           // 11.1 - Chuyên môn
+  huongNghienCuu: string;      // 11.2 (legacy: chuỗi nhiều dòng — không còn dùng để nhập)
+  huongNghienCuuList: string[]; // 11.2 (canonical: mỗi hướng một dòng)
 
   // II. NGHIÊN CỨU VÀ GIẢNG DẠY
   deTai: LlkhDeTai[];
@@ -121,11 +126,16 @@ export const EMPTY_LLKH: LlkhProfile = {
   faxCoQuan: "",
   dienThoaiCaNhan: "",
   email: "",
+  orcid: "",
+  gioiThieu: "",
   ngoaiNgu: [],
   congTac: [],
   daoTao: [],
   linhVucChuyenMon: "",
+  chuyenNganh: "",
+  chuyenMon: "",
   huongNghienCuu: "",
+  huongNghienCuuList: [],
   deTai: [],
   huongDan: [],
   sachQuocTe: [],
@@ -142,6 +152,14 @@ export function normalizeLlkh(raw: unknown): LlkhProfile {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  // 11.2: prefer the new list; fall back to splitting the legacy multi-line string
+  // so old blobs surface as rows in the editor/export.
+  const legacyHuong = str(o.huongNghienCuu);
+  const huongList = Array.isArray(o.huongNghienCuuList)
+    ? (o.huongNghienCuuList as unknown[]).map(str).map((s) => s.trim()).filter(Boolean)
+    : legacyHuong
+      ? legacyHuong.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
+      : [];
   return {
     ...EMPTY_LLKH,
     ...o,
@@ -157,7 +175,10 @@ export function normalizeLlkh(raw: unknown): LlkhProfile {
     diaChiCaNhan: str(o.diaChiCaNhan),
     dienThoaiCoQuan: str(o.dienThoaiCoQuan), faxCoQuan: str(o.faxCoQuan),
     dienThoaiCaNhan: str(o.dienThoaiCaNhan), email: str(o.email),
-    linhVucChuyenMon: str(o.linhVucChuyenMon), huongNghienCuu: str(o.huongNghienCuu),
+    orcid: str(o.orcid), gioiThieu: str(o.gioiThieu),
+    linhVucChuyenMon: str(o.linhVucChuyenMon),
+    chuyenNganh: str(o.chuyenNganh), chuyenMon: str(o.chuyenMon),
+    huongNghienCuu: legacyHuong, huongNghienCuuList: huongList,
     patent: str(o.patent), giaiPhapHuuIch: str(o.giaiPhapHuuIch), thongTinKhac: str(o.thongTinKhac),
     ngoaiNgu: arr<LlkhNgoaiNgu>(o.ngoaiNgu),
     congTac: arr<LlkhCongTac>(o.congTac),

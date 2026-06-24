@@ -167,4 +167,59 @@ CREATE TABLE IF NOT EXISTS lecturer_llkh (
   data_json   TEXT NOT NULL DEFAULT '{}',
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Normalized LLKH activity sections. The repeating "process/activity" rows of the
+-- scientific CV (education, work history, research projects, student supervision)
+-- live here as real queryable rows instead of inside the lecturer_llkh JSON blob,
+-- so reports can aggregate across lecturers. getLlkh() assembles them back into the
+-- LlkhProfile (lib/queries/llkh.ts); the blob keeps only scalars + CV-only arrays.
+-- One row per activity, ordered by sort_order. Columns mirror the Llkh* interfaces.
+CREATE TABLE IF NOT EXISTS lecturer_education (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  bac         TEXT NOT NULL DEFAULT '',
+  thoi_gian   TEXT NOT NULL DEFAULT '',
+  noi         TEXT NOT NULL DEFAULT '',
+  nganh       TEXT NOT NULL DEFAULT '',
+  luan_an     TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lecturer_education_lecturer ON lecturer_education(lecturer_id);
+
+CREATE TABLE IF NOT EXISTS lecturer_work_history (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  from_time   TEXT NOT NULL DEFAULT '',
+  to_time     TEXT NOT NULL DEFAULT '',
+  noi         TEXT NOT NULL DEFAULT '',
+  chuc_vu     TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lecturer_work_history_lecturer ON lecturer_work_history(lecturer_id);
+
+CREATE TABLE IF NOT EXISTS lecturer_projects (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  lecturer_id     INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  ten             TEXT NOT NULL DEFAULT '',
+  ma_so           TEXT NOT NULL DEFAULT '',
+  thoi_gian       TEXT NOT NULL DEFAULT '',
+  kinh_phi        TEXT NOT NULL DEFAULT '',
+  vai_tro         TEXT NOT NULL DEFAULT '',
+  ngay_nghiem_thu TEXT NOT NULL DEFAULT '',
+  ket_qua         TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lecturer_projects_lecturer ON lecturer_projects(lecturer_id);
+
+CREATE TABLE IF NOT EXISTS lecturer_supervision (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  lecturer_id INTEGER NOT NULL REFERENCES lecturers(id) ON DELETE CASCADE,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  ten         TEXT NOT NULL DEFAULT '',
+  luan_an     TEXT NOT NULL DEFAULT '',
+  nam_tn      TEXT NOT NULL DEFAULT '',
+  bac         TEXT NOT NULL DEFAULT '',
+  san_pham    TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_lecturer_supervision_lecturer ON lecturer_supervision(lecturer_id);
 `;

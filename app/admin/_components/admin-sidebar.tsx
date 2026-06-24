@@ -14,6 +14,7 @@ import {
   GraduationCap,
   FileBarChart,
   Database,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,7 @@ const ADMIN_NAV = [
   { label: "Giảng viên", href: "/admin/lecturers", icon: Users, exact: false },
   { label: "Bộ môn", href: "/admin/bo-mon", icon: Building2, exact: false },
   { label: "Bài báo", href: "/admin/papers", icon: FileText, exact: false },
+  { label: "Đề tài & Hướng dẫn", href: "/admin/llkh", icon: ScrollText, exact: false },
   { label: "Tạp chí/Hội nghị", href: "/admin/venues", icon: BookOpen, exact: false },
   { label: "Báo cáo", href: "/admin/reports", icon: FileBarChart, exact: false },
   { label: "Tài khoản", href: "/admin/users", icon: ShieldCheck, exact: false },

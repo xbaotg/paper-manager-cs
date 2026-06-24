@@ -1,7 +1,14 @@
 "use server";
 
 import { requireLecturer, requireManager } from "@/lib/dal";
-import { getLlkh, saveLlkh } from "@/lib/queries/llkh";
+import {
+  getLlkh,
+  saveLlkh,
+  listAllProjects,
+  listAllSupervision,
+  type LlkhProjectRow,
+  type LlkhSupervisionRow,
+} from "@/lib/queries/llkh";
 import { getPapersByLecturer } from "@/lib/queries/papers";
 import { getLecturerById } from "@/lib/queries/lecturers";
 import { normalizeLlkh, type LlkhProfile } from "@/lib/llkh";
@@ -57,6 +64,19 @@ export async function getLlkhForLecturer(lecturerId: number): Promise<MyLlkhData
     lecturerTitle: lec.title ?? "",
     papers: getPapersByLecturer(lecturerId),
   };
+}
+
+export interface LlkhAggregate {
+  projects: LlkhProjectRow[];
+  supervision: LlkhSupervisionRow[];
+}
+
+// Manager-only: every lecturer's research projects + student supervision, for the
+// admin aggregate/report surface. Read-only — edits go through the per-lecturer
+// LLKH wizard (the single writer), which each row deep-links to.
+export async function getLlkhAggregate(): Promise<LlkhAggregate> {
+  await requireManager();
+  return { projects: listAllProjects(), supervision: listAllSupervision() };
 }
 
 // Manager-only: persist any lecturer's LLKH profile (admin edit before export).
