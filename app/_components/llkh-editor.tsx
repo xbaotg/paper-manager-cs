@@ -24,6 +24,10 @@ import {
   type LlkhHuongDan,
   type LlkhSach,
   type LlkhGiaiThuong,
+  type LlkhPatent,
+  type LlkhUngDung,
+  type LlkhThamGia,
+  type LlkhMoiGiang,
 } from "@/lib/llkh";
 
 // ---------- small building blocks ----------
@@ -556,15 +560,90 @@ export function LlkhEditor({
           <RowsEditor<LlkhGiaiThuong>
             label="Giải thưởng Khoa học và Công nghệ"
             rows={P.giaiThuong}
-            empty={{ ten: "", nam: "" }}
+            empty={{ ten: "", noiDung: "", noiCap: "", nam: "" }}
             onChange={(r) => set("giaiThuong", r)}
             cols={[
-              { key: "ten", label: "Hình thức & nội dung giải thưởng", wide: true },
-              { key: "nam", label: "Năm tặng thưởng" },
+              { key: "ten", label: "Tên giải thưởng", wide: true },
+              { key: "noiDung", label: "Nội dung giải thưởng", wide: true },
+              { key: "noiCap", label: "Nơi cấp" },
+              { key: "nam", label: "Năm cấp" },
             ]}
           />
-          <AreaField label="Bằng phát minh, sáng chế (patent)" value={P.patent} onChange={(v) => set("patent", v)} />
-          <AreaField label="Bằng giải pháp hữu ích" value={P.giaiPhapHuuIch} onChange={(v) => set("giaiPhapHuuIch", v)} />
+          <RowsEditor<LlkhPatent>
+            label="Bằng phát minh, sáng chế (patent)"
+            rows={P.patentList}
+            empty={{ ten: "", sanPham: "", soHieu: "", nam: "", noiCap: "", tacGia: "" }}
+            onChange={(r) => set("patentList", r)}
+            cols={[
+              { key: "ten", label: "Tên bằng", wide: true },
+              { key: "soHieu", label: "Số hiệu" },
+              { key: "nam", label: "Năm cấp" },
+              { key: "noiCap", label: "Nơi cấp" },
+              { key: "tacGia", label: "Tác giả / đồng tác giả" },
+              { key: "sanPham", label: "Sản phẩm đề tài (mã số)" },
+            ]}
+          />
+          <RowsEditor<LlkhPatent>
+            label="Bằng giải pháp hữu ích"
+            rows={P.giaiPhapList}
+            empty={{ ten: "", sanPham: "", soHieu: "", nam: "", noiCap: "", tacGia: "" }}
+            onChange={(r) => set("giaiPhapList", r)}
+            cols={[
+              { key: "ten", label: "Tên giải pháp", wide: true },
+              { key: "soHieu", label: "Số hiệu" },
+              { key: "nam", label: "Năm cấp" },
+              { key: "noiCap", label: "Nơi cấp" },
+              { key: "tacGia", label: "Tác giả / đồng tác giả" },
+              { key: "sanPham", label: "Sản phẩm đề tài (mã số)" },
+            ]}
+          />
+          <RowsEditor<LlkhUngDung>
+            label="Ứng dụng thực tiễn & thương mại hoá kết quả nghiên cứu"
+            rows={P.ungDung}
+            empty={{ ten: "", hinhThuc: "", quyMo: "", diaChi: "", nam: "", sanPham: "" }}
+            onChange={(r) => set("ungDung", r)}
+            cols={[
+              { key: "ten", label: "Tên công nghệ / giải pháp đã chuyển giao", wide: true },
+              { key: "hinhThuc", label: "Hình thức" },
+              { key: "quyMo", label: "Quy mô" },
+              { key: "diaChi", label: "Địa chỉ áp dụng", wide: true },
+              { key: "nam", label: "Năm chuyển giao" },
+              { key: "sanPham", label: "Sản phẩm đề tài (mã số)" },
+            ]}
+          />
+          <RowsEditor<LlkhThamGia>
+            label="Tham gia các chương trình trong và ngoài nước"
+            rows={P.chuongTrinh}
+            empty={{ thoiGian: "", ten: "", chucDanh: "" }}
+            onChange={(r) => set("chuongTrinh", r)}
+            cols={[
+              { key: "thoiGian", label: "Thời gian" },
+              { key: "ten", label: "Tên chương trình", wide: true },
+              { key: "chucDanh", label: "Chức danh" },
+            ]}
+          />
+          <RowsEditor<LlkhThamGia>
+            label="Tham gia Hiệp hội KH, Ban biên tập tạp chí, Ban tổ chức Hội nghị KH&CN"
+            rows={P.hiepHoi}
+            empty={{ thoiGian: "", ten: "", chucDanh: "" }}
+            onChange={(r) => set("hiepHoi", r)}
+            cols={[
+              { key: "thoiGian", label: "Thời gian" },
+              { key: "ten", label: "Tên Hiệp hội / Tạp chí / Hội nghị", wide: true },
+              { key: "chucDanh", label: "Chức danh" },
+            ]}
+          />
+          <RowsEditor<LlkhMoiGiang>
+            label="Tham gia làm việc tại Trường ĐH / Viện / Trung tâm nghiên cứu theo lời mời"
+            rows={P.moiGiang}
+            empty={{ thoiGian: "", ten: "", noiDung: "" }}
+            onChange={(r) => set("moiGiang", r)}
+            cols={[
+              { key: "thoiGian", label: "Thời gian" },
+              { key: "ten", label: "Tên Trường / Viện / Trung tâm", wide: true },
+              { key: "noiDung", label: "Nội dung tham gia", wide: true },
+            ]}
+          />
           <AreaField label="Thông tin khác" value={P.thongTinKhac} onChange={(v) => set("thongTinKhac", v)} rows={4} />
         </Section>
       )}
@@ -648,6 +727,9 @@ function ReviewSummary({ P, pubCount }: { P: LlkhProfile; pubCount: number }) {
         <CountCard label="Bài báo (tự động khi xuất)" n={pubCount} />
         <CountCard label="Sách (QT + trong nước)" n={P.sachQuocTe.length + P.sachTrongNuoc.length} />
         <CountCard label="Giải thưởng" n={P.giaiThuong.length} />
+        <CountCard label="Bằng sáng chế / giải pháp" n={P.patentList.length + P.giaiPhapList.length} />
+        <CountCard label="Ứng dụng / chuyển giao" n={P.ungDung.length} />
+        <CountCard label="Chương trình / hiệp hội / mời giảng" n={P.chuongTrinh.length + P.hiepHoi.length + P.moiGiang.length} />
         <CountCard label="Ngoại ngữ" n={P.ngoaiNgu.length} />
       </div>
     </div>

@@ -8,7 +8,7 @@
 
 import { getVenueByCode, getVenueRankShort, isVenueScopus } from "./venues";
 import { countsAsPublication, type Paper } from "./data";
-import type { LlkhProfile } from "./llkh";
+import type { LlkhProfile, LlkhPatent } from "./llkh";
 import { UIT_LOGO_DATA_URI } from "./llkh-logo";
 
 export interface LlkhExportInput {
@@ -240,9 +240,34 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
       rows.map((s) => [s.ten, s.sanPham, s.nhaXB, s.namXB, s.tacGia, s.butDanh])
     );
   const giaiThuong = rowsTable(
-    ["Hình thức, nội dung giải thưởng", "Năm tặng thưởng"],
-    ["73%", "22%"],
-    P.giaiThuong.map((g) => [g.ten, g.nam])
+    ["Tên giải thưởng", "Nội dung giải thưởng", "Nơi cấp", "Năm cấp"],
+    ["26%", "34%", "23%", "12%"],
+    P.giaiThuong.map((g) => [g.ten, g.noiDung, g.noiCap, g.nam])
+  );
+  const patentCols = ["Tên bằng", "Sản phẩm của đề tài/dự án (chỉ ghi mã số)", "Số hiệu", "Năm cấp", "Nơi cấp", "Tác giả/đồng tác giả"];
+  const patentWidths = ["27%", "14%", "11%", "8%", "18%", "17%"];
+  const patentRows = (rows: LlkhPatent[]) => rows.map((p) => [p.ten, p.sanPham, p.soHieu, p.nam, p.noiCap, p.tacGia]);
+  const patentTable = rowsTable(patentCols, patentWidths, patentRows(P.patentList));
+  const giaiPhapTable = rowsTable(patentCols, patentWidths, patentRows(P.giaiPhapList));
+  const ungDung = rowsTable(
+    ["Tên công nghệ/giải pháp đã chuyển giao", "Hình thức", "Quy mô", "Địa chỉ áp dụng", "Năm chuyển giao", "Sản phẩm (mã số)"],
+    ["28%", "12%", "14%", "20%", "10%", "11%"],
+    P.ungDung.map((u) => [u.ten, u.hinhThuc, u.quyMo, u.diaChi, u.nam, u.sanPham])
+  );
+  const chuongTrinh = rowsTable(
+    ["Thời gian", "Tên chương trình", "Chức danh"],
+    ["20%", "50%", "25%"],
+    P.chuongTrinh.map((c) => [c.thoiGian, c.ten, c.chucDanh])
+  );
+  const hiepHoi = rowsTable(
+    ["Thời gian", "Tên Hiệp hội/Tạp chí/Hội nghị", "Chức danh"],
+    ["20%", "50%", "25%"],
+    P.hiepHoi.map((h) => [h.thoiGian, h.ten, h.chucDanh])
+  );
+  const moiGiang = rowsTable(
+    ["Thời gian", "Tên Trường ĐH/Viện/Trung tâm nghiên cứu", "Nội dung tham gia"],
+    ["20%", "45%", "30%"],
+    P.moiGiang.map((m) => [m.thoiGian, m.ten, m.noiDung])
   );
 
   const journalCiteHead =
@@ -334,15 +359,22 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   <p class="sub">2.4. Đăng trên kỷ yếu Hội nghị trong nước</p>
   ${pubTable(cls.confTN, confCiteHead, "Số hiệu ISBN", "Ghi chú", () => "")}
 
-  <h2>IV. CÁC GIẢI THƯỞNG</h2>
+  <h2>IV. CÁC GIẢI THƯỞNG VÀ THÔNG TIN KHÁC</h2>
   <p class="f"><b>1. Các giải thưởng Khoa học và Công nghệ</b></p>
   ${giaiThuong}
   <p class="f"><b>2. Bằng phát minh, sáng chế (patent)</b></p>
-  <div class="pre">${esc(P.patent)}</div>
+  ${P.patentList.length ? patentTable : P.patent ? `<div class="pre">${esc(P.patent)}</div>` : patentTable}
   <p class="f"><b>3. Bằng giải pháp hữu ích</b></p>
-  <div class="pre">${esc(P.giaiPhapHuuIch)}</div>
-
-  <h2>V. THÔNG TIN KHÁC</h2>
+  ${P.giaiPhapList.length ? giaiPhapTable : P.giaiPhapHuuIch ? `<div class="pre">${esc(P.giaiPhapHuuIch)}</div>` : giaiPhapTable}
+  <p class="f"><b>4. Ứng dụng thực tiễn và thương mại hoá kết quả nghiên cứu</b></p>
+  ${ungDung}
+  <p class="f"><b>5. Tham gia các chương trình trong và ngoài nước</b></p>
+  ${chuongTrinh}
+  <p class="f"><b>6. Tham gia các Hiệp hội Khoa học, Ban biên tập các tạp chí Khoa học, Ban tổ chức các Hội nghị về KH&amp;CN</b></p>
+  ${hiepHoi}
+  <p class="f"><b>7. Tham gia làm việc tại Trường Đại học/Viện/Trung tâm nghiên cứu theo lời mời</b></p>
+  ${moiGiang}
+  <p class="f"><b>8. Thông tin khác</b></p>
   <div class="pre">${esc(P.thongTinKhac)}</div>
 
   <table class="sign"><tr>

@@ -55,8 +55,44 @@ export interface LlkhSach {
 }
 
 export interface LlkhGiaiThuong {
-  ten: string;         // hình thức & nội dung giải thưởng
-  nam: string;         // năm tặng thưởng
+  ten: string;         // tên giải thưởng
+  noiDung: string;     // nội dung giải thưởng
+  noiCap: string;      // nơi cấp
+  nam: string;         // năm cấp
+}
+
+// Bằng phát minh/sáng chế (patent) & bằng giải pháp hữu ích — same columns.
+export interface LlkhPatent {
+  ten: string;         // tên bằng / tên giải pháp
+  sanPham: string;     // sản phẩm của đề tài (mã số)
+  soHieu: string;      // số hiệu
+  nam: string;         // năm cấp
+  noiCap: string;      // nơi cấp
+  tacGia: string;      // tác giả / đồng tác giả
+}
+
+// Ứng dụng thực tiễn và thương mại hoá kết quả nghiên cứu.
+export interface LlkhUngDung {
+  ten: string;         // tên công nghệ / giải pháp đã chuyển giao
+  hinhThuc: string;    // hình thức
+  quyMo: string;       // quy mô
+  diaChi: string;      // địa chỉ áp dụng
+  nam: string;         // năm chuyển giao
+  sanPham: string;     // sản phẩm của đề tài (mã số)
+}
+
+// Tham gia chương trình / hiệp hội / ban biên tập / ban tổ chức hội nghị.
+export interface LlkhThamGia {
+  thoiGian: string;
+  ten: string;         // tên chương trình / hiệp hội / tạp chí / hội nghị
+  chucDanh: string;    // chức danh
+}
+
+// Tham gia làm việc tại Trường ĐH / Viện / Trung tâm nghiên cứu theo lời mời.
+export interface LlkhMoiGiang {
+  thoiGian: string;
+  ten: string;         // tên trường / viện / trung tâm
+  noiDung: string;     // nội dung tham gia
 }
 
 export interface LlkhProfile {
@@ -98,10 +134,16 @@ export interface LlkhProfile {
   sachQuocTe: LlkhSach[];
   sachTrongNuoc: LlkhSach[];
 
-  // IV. CÁC GIẢI THƯỞNG
+  // IV. CÁC GIẢI THƯỞNG & THÔNG TIN KHÁC
   giaiThuong: LlkhGiaiThuong[];
-  patent: string;              // 2. bằng phát minh, sáng chế
-  giaiPhapHuuIch: string;      // 3. bằng giải pháp hữu ích
+  patent: string;              // legacy free-text (giữ để đọc dữ liệu cũ)
+  giaiPhapHuuIch: string;      // legacy free-text
+  patentList: LlkhPatent[];    // bằng phát minh, sáng chế
+  giaiPhapList: LlkhPatent[];  // bằng giải pháp hữu ích
+  ungDung: LlkhUngDung[];      // ứng dụng thực tiễn & thương mại hoá
+  chuongTrinh: LlkhThamGia[];  // tham gia chương trình trong/ngoài nước
+  hiepHoi: LlkhThamGia[];      // hiệp hội KH / ban biên tập / ban tổ chức HN
+  moiGiang: LlkhMoiGiang[];    // làm việc tại trường/viện theo lời mời
 
   // V. THÔNG TIN KHÁC
   thongTinKhac: string;
@@ -143,6 +185,12 @@ export const EMPTY_LLKH: LlkhProfile = {
   giaiThuong: [],
   patent: "",
   giaiPhapHuuIch: "",
+  patentList: [],
+  giaiPhapList: [],
+  ungDung: [],
+  chuongTrinh: [],
+  hiepHoi: [],
+  moiGiang: [],
   thongTinKhac: "",
 };
 
@@ -188,5 +236,11 @@ export function normalizeLlkh(raw: unknown): LlkhProfile {
     sachQuocTe: arr<LlkhSach>(o.sachQuocTe),
     sachTrongNuoc: arr<LlkhSach>(o.sachTrongNuoc),
     giaiThuong: arr<LlkhGiaiThuong>(o.giaiThuong),
+    patentList: arr<LlkhPatent>(o.patentList),
+    giaiPhapList: arr<LlkhPatent>(o.giaiPhapList),
+    ungDung: arr<LlkhUngDung>(o.ungDung),
+    chuongTrinh: arr<LlkhThamGia>(o.chuongTrinh),
+    hiepHoi: arr<LlkhThamGia>(o.hiepHoi),
+    moiGiang: arr<LlkhMoiGiang>(o.moiGiang),
   };
 }
