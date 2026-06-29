@@ -122,6 +122,58 @@ export function isUnpublished(s: SubmissionStatus | undefined | null): boolean {
   return (s ?? "submitted") !== "published";
 }
 
+// --- Student self-submitted papers (no account, admin-moderated) ----------
+// A paper a student submits about their own work via the public /nop-bai form.
+// There is no lecturer byline, so it can't be credited to a person — on approval
+// the KPI is credited to a faculty-wide placeholder lecturer (the "student pool")
+// so it still rolls up to the Khoa. The row lives in `paper_submissions`, NOT in
+// `papers`, until a manager approves it — so it can never leak into the public
+// hub or KPI while pending. `token` is the only key the student needs to edit it
+// later: no registration, no login.
+export type SubmissionReviewStatus = "pending" | "approved" | "rejected";
+
+export const SUBMISSION_REVIEW_LABEL: Record<SubmissionReviewStatus, string> = {
+  pending: "Chờ duyệt",
+  approved: "Đã duyệt",
+  rejected: "Bị từ chối",
+};
+
+// What the public form sends to the server (client → server action). Authors are
+// plain names (all external); the server validates every field (trust boundary).
+export interface StudentSubmissionInput {
+  title: string;
+  year: number;
+  venue?: string;
+  authors: string[];
+  doi?: string;
+  url?: string;
+  abstract?: string;
+  submissionStatus?: SubmissionStatus;
+  submitterName: string;
+  submitterEmail: string;
+  website?: string; // honeypot — real users leave this empty
+}
+
+export interface PaperSubmission {
+  id: number;
+  token: string;
+  title: string;
+  year: number;
+  venue: string;
+  authors: string; // comma-separated names (all external)
+  doi?: string;
+  url?: string;
+  abstract?: string;
+  submissionStatus: SubmissionStatus;
+  submitterName: string;
+  submitterEmail: string;
+  status: SubmissionReviewStatus;
+  reviewerNote?: string;
+  paperId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Paper {
   id: number;
   title: string;

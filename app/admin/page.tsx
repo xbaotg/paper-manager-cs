@@ -53,6 +53,7 @@ import { getVenueRankBucket, isVenueQ1, isVenueScopus, hydrateVenues } from "@/l
 import { isCreditedTo } from "@/lib/kpi";
 import { getDatabase } from "@/app/actions";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
+import { PendingSubmissionsCard } from "./_components/pending-submissions-card";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -372,6 +373,8 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      <PendingSubmissionsCard />
 
       {/* Year tabs — quick single-year scope (also reflects/updates the from/to range below). */}
       {(() => {

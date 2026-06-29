@@ -439,6 +439,34 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  // --- Student self-submission queue (public /nop-bai, admin-moderated) ---
+  {
+    id: "0018_paper_submissions",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS paper_submissions (
+          id                INTEGER PRIMARY KEY,
+          token             TEXT NOT NULL UNIQUE,
+          title             TEXT NOT NULL,
+          year              INTEGER NOT NULL,
+          venue_code        TEXT NOT NULL DEFAULT '',
+          authors           TEXT NOT NULL DEFAULT '',
+          doi               TEXT,
+          url               TEXT,
+          abstract          TEXT,
+          submission_status TEXT NOT NULL DEFAULT 'published',
+          submitter_name    TEXT NOT NULL DEFAULT '',
+          submitter_email   TEXT NOT NULL DEFAULT '',
+          status            TEXT NOT NULL DEFAULT 'pending',
+          reviewer_note     TEXT,
+          paper_id          INTEGER,
+          created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_paper_submissions_status ON paper_submissions(status);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {
