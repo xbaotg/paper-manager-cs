@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send, RotateCcw } from "lucide-react";
+import { Send, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { AuthorshipInput, type AuthorEntry } from "./authorship-input";
 import { VenuePicker } from "@/app/admin/_components/venue-picker";
+import { BibtexImportDialog } from "./bibtex-import-dialog";
 import type { PaperSubmission, StudentSubmissionInput } from "@/lib/data";
 
 function initialAuthors(s?: PaperSubmission | null): AuthorEntry[] {
@@ -43,6 +44,25 @@ export function StudentSubmissionForm({
   const [submitterEmail, setSubmitterEmail] = useState(initial?.submitterEmail ?? "");
   const [website, setWebsite] = useState(""); // honeypot — stays empty for humans
   const [pending, setPending] = useState(false);
+  const [isBibtexOpen, setIsBibtexOpen] = useState(false);
+
+  // Prefill from a BibTeX paste or an OpenAlex title search. lecturers=[] below
+  // means every imported author comes back external — no lecturer link.
+  function handleBibtexConfirm(data: {
+    title: string;
+    year: string;
+    venue: string;
+    authors: AuthorEntry[];
+    doi?: string;
+    url?: string;
+  }) {
+    setTitle(data.title);
+    setYear(data.year);
+    setVenue(data.venue);
+    setAuthors(data.authors);
+    setDoi(data.doi || "");
+    setUrl(data.url || "");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,6 +98,23 @@ export function StudentSubmissionForm({
     <Card className="border-border/50 bg-card/80 shadow-xl overflow-hidden">
       <div className="h-1 bg-gradient-to-r from-primary via-cta to-primary/60" />
       <CardContent className="p-6 sm:p-8">
+        <div className="mb-6 space-y-6">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-dashed h-12 bg-muted/20 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"
+            onClick={() => setIsBibtexOpen(true)}
+          >
+            <Sparkles className="size-4 mr-2" />
+            Nhập nhanh từ BibTeX / Google Scholar
+          </Button>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Hoặc điền thủ công</span>
+            </div>
+          </div>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Honeypot: off-screen, hidden from real users and assistive tech. */}
           <input
@@ -185,6 +222,13 @@ export function StudentSubmissionForm({
             </Button>
           </div>
         </form>
+
+        <BibtexImportDialog
+          open={isBibtexOpen}
+          onOpenChange={setIsBibtexOpen}
+          lecturers={[]}
+          onConfirm={handleBibtexConfirm}
+        />
       </CardContent>
     </Card>
   );
