@@ -222,4 +222,32 @@ CREATE TABLE IF NOT EXISTS lecturer_supervision (
   san_pham    TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_lecturer_supervision_lecturer ON lecturer_supervision(lecturer_id);
+
+-- Student-submitted papers (no account, admin-moderated). A student fills the
+-- public /nop-bai form; the row stays HERE (never in the papers table) until a
+-- manager approves it, so a pending submission can't leak into the public hub or
+-- KPI. The token is the only key the student needs to edit it later (no login).
+-- On approval a real papers row is created, credited to the faculty "student
+-- pool" lecturer so the KPI still rolls up to the Khoa. The status column is the
+-- moderation state; submission_status is the journal stage the student reports.
+CREATE TABLE IF NOT EXISTS paper_submissions (
+  id                INTEGER PRIMARY KEY,
+  token             TEXT NOT NULL UNIQUE,
+  title             TEXT NOT NULL,
+  year              INTEGER NOT NULL,
+  venue_code        TEXT NOT NULL DEFAULT '',
+  authors           TEXT NOT NULL DEFAULT '',           -- comma-separated names; all external
+  doi               TEXT,
+  url               TEXT,
+  abstract          TEXT,
+  submission_status TEXT NOT NULL DEFAULT 'published',
+  submitter_name    TEXT NOT NULL DEFAULT '',
+  submitter_email   TEXT NOT NULL DEFAULT '',
+  status            TEXT NOT NULL DEFAULT 'pending',     -- pending | approved | rejected
+  reviewer_note     TEXT,
+  paper_id          INTEGER,                             -- the papers.id created on approval (loose link)
+  created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_paper_submissions_status ON paper_submissions(status);
 `;

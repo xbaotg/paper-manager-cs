@@ -94,7 +94,7 @@ export function Hero({ papers }: { papers: Paper[] }) {
         </p>
 
         <div className="flex flex-wrap gap-3 justify-center mb-16">
-          <Link href="#submit">
+          <Link href="/nop-bai">
             <Button size="lg" className="cursor-pointer px-6">
               <Plus className="size-4" data-icon="inline-start" />
               Nhập bài báo ngay
