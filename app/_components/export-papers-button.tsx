@@ -24,7 +24,8 @@ export function ExportPapersButton({
   function handleExport() {
     startTransition(async () => {
       try {
-        const { filename, base64, count } = await exportPapersXlsxAction(lecturerId);
+        const { filename, base64, count, incomplete, missing } =
+          await exportPapersXlsxAction(lecturerId);
         if (count === 0) {
           toast.error("Giảng viên này chưa có bài báo đã chấp nhận/xuất bản");
           return;
@@ -38,7 +39,16 @@ export function ExportPapersButton({
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
-        toast.success(`Đã xuất ${count} bài báo`);
+        // The university import rejects a row with any required cell blank, so
+        // say up front which ones to fill in rather than letting the upload fail.
+        if (incomplete > 0) {
+          toast.warning(`Đã xuất ${count} bài — ${incomplete} bài sẽ bị từ chối khi import`, {
+            description: `Còn thiếu: ${missing.join(", ")}. Bổ sung trong app rồi xuất lại.`,
+            duration: 10000,
+          });
+        } else {
+          toast.success(`Đã xuất ${count} bài báo`);
+        }
       } catch {
         toast.error("Xuất Excel thất bại");
       }

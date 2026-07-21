@@ -20,6 +20,8 @@ interface PaperRow {
   is_corresponding_author: number;
   quartile: string | null;
   submission_status: string;
+  vol_no_pp: string | null;
+  pdf_url: string | null;
 }
 
 // Parse the stored ordered author list. Returns undefined for legacy rows (no
@@ -55,10 +57,12 @@ function toPaper(r: PaperRow, lecturerIds: number[]): Paper {
     isCorrespondingAuthor: !!r.is_corresponding_author,
     quartile: r.quartile,
     submissionStatus: (r.submission_status as Paper["submissionStatus"]) ?? "submitted",
+    volNoPp: r.vol_no_pp ?? "",
     ...(authorLinks ? { authorLinks } : {}),
     ...(r.doi ? { doi: r.doi } : {}),
     ...(r.url ? { url: r.url } : {}),
     ...(r.abstract ? { abstract: r.abstract } : {}),
+    ...(r.pdf_url ? { pdfUrl: r.pdf_url } : {}),
   };
 }
 
@@ -157,8 +161,8 @@ export function createPaper(p: Paper): void {
       `INSERT INTO papers
          (id, title, year, pub_month, venue_code, authors, authors_json, doi, url, abstract,
           credited_lecturer_id, is_first_author, is_corresponding_author,
-          quartile, submission_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          quartile, submission_status, vol_no_pp, pdf_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       p.id,
       p.title,
@@ -174,7 +178,9 @@ export function createPaper(p: Paper): void {
       p.isFirstAuthor ? 1 : 0,
       p.isCorrespondingAuthor ? 1 : 0,
       p.quartile ?? null,
-      p.submissionStatus ?? "submitted"
+      p.submissionStatus ?? "submitted",
+      p.volNoPp ?? "",
+      p.pdfUrl ?? null
     );
     setPaperLecturers(p.id, d.lecturerIds);
   })();
@@ -188,7 +194,7 @@ export function updatePaper(id: number, p: Paper): void {
       `UPDATE papers SET
          title = ?, year = ?, pub_month = ?, venue_code = ?, authors = ?, authors_json = ?, doi = ?, url = ?, abstract = ?,
          credited_lecturer_id = ?, is_first_author = ?, is_corresponding_author = ?,
-         quartile = ?, submission_status = ?
+         quartile = ?, submission_status = ?, vol_no_pp = ?, pdf_url = ?
        WHERE id = ?`
     ).run(
       p.title,
@@ -205,6 +211,8 @@ export function updatePaper(id: number, p: Paper): void {
       p.isCorrespondingAuthor ? 1 : 0,
       p.quartile ?? null,
       p.submissionStatus ?? "submitted",
+      p.volNoPp ?? "",
+      p.pdfUrl ?? null,
       id
     );
     setPaperLecturers(id, d.lecturerIds);

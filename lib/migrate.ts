@@ -467,6 +467,24 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+
+  // --- Fields the university's publication-import template requires ---
+  // magv (staff code), Vol/No/pp and the full-text PDF link are all mandatory in
+  // the receiving system and had no home here, so every exported row was rejected.
+  {
+    id: "0019_university_import_fields",
+    up: (db) => {
+      addColumnIfMissing(db, "lecturers", "magv", "magv TEXT NOT NULL DEFAULT ''");
+      addColumnIfMissing(db, "papers", "vol_no_pp", "vol_no_pp TEXT NOT NULL DEFAULT ''");
+      addColumnIfMissing(db, "papers", "pdf_url", "pdf_url TEXT");
+      // Lecturers seeded from the university HR list carry their staff code as the
+      // row id, so backfill those. Ones added in-app got a Date.now() id instead
+      // (~1.7e12) and need their magv typed in by hand.
+      db.prepare(
+        "UPDATE lecturers SET magv = CAST(id AS TEXT) WHERE magv = '' AND id < 1000000000000"
+      ).run();
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

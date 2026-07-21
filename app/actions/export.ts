@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 import { requireUser, canManage, homeForUser } from "@/lib/dal";
 import { getPapersByLecturer } from "@/lib/queries/papers";
-import { getLecturerById } from "@/lib/queries/lecturers";
+import { getLecturerById, listLecturers } from "@/lib/queries/lecturers";
 import { countsAsPublication } from "@/lib/data";
-import { buildPapersImportXlsx } from "@/lib/xlsx-export";
+import { buildPapersImportXlsx, missingImportFields, MISSING_MAGV } from "@/lib/xlsx-export";
 import { logAction } from "@/lib/logger";
 
 function slug(s: string): string {
@@ -24,7 +24,13 @@ function slug(s: string): string {
 // no business in the university's publication register.
 export async function exportPapersXlsxAction(
   lecturerId: number
-): Promise<{ filename: string; base64: string; count: number }> {
+): Promise<{
+  filename: string;
+  base64: string;
+  count: number;
+  incomplete: number;
+  missing: string[];
+}> {
   const user = await requireUser();
   const lecturer = getLecturerById(lecturerId);
   if (!lecturer) throw new Error("Không tìm thấy giảng viên");
@@ -40,14 +46,33 @@ export async function exportPapersXlsxAction(
     countsAsPublication(p.submissionStatus)
   );
 
+  const all = listLecturers();
+  const magvById = new Map(all.map((l) => [l.id, l.magv ?? ""]));
   const today = new Date().toISOString().slice(0, 10);
-  const file = buildPapersImportXlsx(papers, today);
+  const file = buildPapersImportXlsx(papers, today, magvById);
 
-  await logAction("papers.export_xlsx", { lecturerId, papers: papers.length });
+  // Tell the user which required cells are still blank, so the gaps get filled in
+  // the app rather than discovered one row at a time in the import report.
+  const gaps = papers.map((p) => missingImportFields(p, magvById)).filter((g) => g.length > 0);
+  const nameById = new Map(all.map((l) => [l.id, l.name]));
+  const noMagv = [...new Set(papers.flatMap((p) => p.lecturerIds ?? []))]
+    .filter((id) => !magvById.get(id)?.trim())
+    .map((id) => nameById.get(id) ?? String(id));
+  const missing = [...new Set(gaps.flat())].map((m) =>
+    m === MISSING_MAGV ? `mã GV của ${noMagv.join(", ")}` : m
+  );
+
+  await logAction("papers.export_xlsx", {
+    lecturerId,
+    papers: papers.length,
+    incomplete: gaps.length,
+  });
 
   return {
     filename: `Bai-bao-${slug(lecturer.name) || lecturerId}-${today}.xlsx`,
     base64: file.toString("base64"),
     count: papers.length,
+    incomplete: gaps.length,
+    missing,
   };
 }

@@ -46,6 +46,8 @@ const emptyForm = {
   authors: "",
   doi: "",
   url: "",
+  volNoPp: "",
+  pdfUrl: "",
   abstract: "",
   quartile: "",
   submissionStatus: "submitted" as SubmissionStatus,
@@ -133,6 +135,8 @@ export function PaperFormAdmin({
         authors: editingPaper.authors,
         doi: editingPaper.doi || "",
         url: editingPaper.url || "",
+        volNoPp: editingPaper.volNoPp || "",
+        pdfUrl: editingPaper.pdfUrl || "",
         abstract: editingPaper.abstract || "",
         quartile: editingPaper.quartile ?? "",
         submissionStatus: editingPaper.submissionStatus ?? "submitted",
@@ -265,6 +269,8 @@ export function PaperFormAdmin({
       authorLinks,
       doi: form.doi.trim() || undefined,
       url: form.url.trim() || undefined,
+      volNoPp: form.volNoPp.trim(),
+      pdfUrl: form.pdfUrl.trim() || undefined,
       abstract: form.abstract.trim() || undefined,
       creditedLecturerId: credited,
       isFirstAuthor: firstAuthor,
@@ -535,6 +541,35 @@ export function PaperFormAdmin({
               />
             </div>
           </div>
+
+          {/* Required by the university's publication import (mẫu import bài báo). */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold font-heading">
+                Vol/No/pp
+              </label>
+              <Input
+                placeholder="VD: Vol.12, No.3, pp.45-58"
+                value={form.volNoPp}
+                onChange={(e) => setForm({ ...form, volNoPp: e.target.value })}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold font-heading">
+                Link toàn văn PDF
+              </label>
+              <Input
+                placeholder="VD: https://.../paper.pdf"
+                value={form.pdfUrl}
+                onChange={(e) => setForm({ ...form, pdfUrl: e.target.value })}
+                className="h-11"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Hai ô trên bắt buộc khi xuất Excel nộp lên hệ thống quản lý khoa học của trường.
+          </p>
 
           {/* Abstract */}
           <div className="space-y-2">

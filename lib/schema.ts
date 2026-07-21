@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS lecturers (
   bo_mon_id     INTEGER REFERENCES bo_mon(id) ON DELETE SET NULL,
   avatar_url    TEXT,                                   -- profile photo URL; NULL -> UI shows initials
   excluded_from_kpi INTEGER NOT NULL DEFAULT 0,         -- 1 -> dropped from all aggregate KPI stats
-  hidden_from_hub   INTEGER NOT NULL DEFAULT 0          -- 1 -> hidden from the public /hub/lecturers directory
+  hidden_from_hub   INTEGER NOT NULL DEFAULT 0,         -- 1 -> hidden from the public /hub/lecturers directory
+  magv          TEXT NOT NULL DEFAULT ''                -- university staff code; the key the .xlsx export writes
 );
 
 CREATE TABLE IF NOT EXISTS papers (
@@ -50,7 +51,9 @@ CREATE TABLE IF NOT EXISTS papers (
   is_first_author          INTEGER NOT NULL DEFAULT 0,
   is_corresponding_author  INTEGER NOT NULL DEFAULT 0,
   quartile                 TEXT,                            -- Q1..Q4 snapshot; NULL -> fall back to venue rank
-  submission_status        TEXT NOT NULL DEFAULT 'submitted' -- submitted | under_review | rebuttal | accepted | denied | published
+  submission_status        TEXT NOT NULL DEFAULT 'submitted', -- submitted | under_review | rebuttal | accepted | denied | published
+  vol_no_pp                TEXT NOT NULL DEFAULT '',        -- "Vol.12, No.3, pp.45-58" — required by the university import
+  pdf_url                  TEXT                             -- full-text PDF link — required by the university import
 );
 
 CREATE TABLE IF NOT EXISTS paper_lecturers (

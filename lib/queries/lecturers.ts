@@ -14,6 +14,7 @@ interface LecturerRow {
   avatar_url: string | null;
   excluded_from_kpi: number | null;
   hidden_from_hub: number | null;
+  magv: string | null;
 }
 
 function toLecturer(r: LecturerRow): Lecturer {
@@ -29,6 +30,7 @@ function toLecturer(r: LecturerRow): Lecturer {
     avatarUrl: r.avatar_url,
     excludedFromKpi: !!r.excluded_from_kpi,
     hiddenFromHub: !!r.hidden_from_hub,
+    magv: r.magv ?? "",
   };
 }
 
@@ -47,7 +49,7 @@ export function getLecturerById(id: number): Lecturer | null {
 export function createLecturer(l: Lecturer): void {
   getDb()
     .prepare(
-      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url, excluded_from_kpi, hidden_from_hub) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO lecturers (id, name, email, title, department, phone, academic_rank, bo_mon_id, avatar_url, excluded_from_kpi, hidden_from_hub, magv) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .run(
       l.id,
@@ -60,7 +62,8 @@ export function createLecturer(l: Lecturer): void {
       l.boMonId ?? null,
       l.avatarUrl ?? null,
       l.excludedFromKpi ? 1 : 0,
-      l.hiddenFromHub ? 1 : 0
+      l.hiddenFromHub ? 1 : 0,
+      l.magv ?? ""
     );
 }
 
@@ -92,7 +95,7 @@ export function updateLecturer(id: number, l: Lecturer): void {
     .prepare(
       // avatar_url via COALESCE: the lecturer edit form does not carry it, so a
       // null arg preserves the photo backfilled by migration instead of wiping it.
-      "UPDATE lecturers SET name = ?, email = ?, title = ?, department = ?, phone = ?, academic_rank = ?, bo_mon_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?"
+      "UPDATE lecturers SET name = ?, email = ?, title = ?, department = ?, phone = ?, academic_rank = ?, bo_mon_id = ?, avatar_url = COALESCE(?, avatar_url), magv = ? WHERE id = ?"
     )
     .run(
       l.name,
@@ -103,6 +106,7 @@ export function updateLecturer(id: number, l: Lecturer): void {
       l.academicRank ?? academicRankFromTitle(l.title),
       l.boMonId ?? null,
       l.avatarUrl ?? null,
+      l.magv ?? "",
       id
     );
 }
