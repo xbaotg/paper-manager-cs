@@ -8,23 +8,25 @@ import { exportPapersXlsxAction } from "@/app/actions/export";
 
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-// Downloads papers as the university import template. `lecturerId` omitted (or
-// null) exports every paper — the action rejects that for non-managers.
+// Downloads one lecturer's papers as the university import template. `iconOnly`
+// is for the per-row action column in the lecturer list.
 export function ExportPapersButton({
   lecturerId,
   label = "Xuất Excel (mẫu import)",
+  iconOnly = false,
 }: {
-  lecturerId?: number | null;
+  lecturerId: number;
   label?: string;
+  iconOnly?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
   function handleExport() {
     startTransition(async () => {
       try {
-        const { filename, base64, count } = await exportPapersXlsxAction(lecturerId ?? undefined);
+        const { filename, base64, count } = await exportPapersXlsxAction(lecturerId);
         if (count === 0) {
-          toast.error("Không có bài báo đã chấp nhận/xuất bản để xuất");
+          toast.error("Giảng viên này chưa có bài báo đã chấp nhận/xuất bản");
           return;
         }
         const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -43,13 +45,30 @@ export function ExportPapersButton({
     });
   }
 
+  const title = "Xuất bài báo ra file .xlsx theo mẫu import của hệ thống quản lý khoa học";
+
+  if (iconOnly) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handleExport}
+        disabled={pending}
+        className="cursor-pointer opacity-60 hover:opacity-100 hover:text-primary"
+        title={title}
+      >
+        <FileSpreadsheet className="size-4" />
+      </Button>
+    );
+  }
+
   return (
     <Button
       variant="outline"
       onClick={handleExport}
       disabled={pending}
       className="cursor-pointer gap-1.5"
-      title="Tải file .xlsx theo mẫu import của hệ thống quản lý khoa học"
+      title={title}
     >
       <FileSpreadsheet className="size-4" /> {label}
     </Button>
