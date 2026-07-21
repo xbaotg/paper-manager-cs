@@ -281,11 +281,11 @@ function pubDate(p: Paper, today: string): string {
 }
 
 // Column G wants university staff codes (magv), leading with the author who gets
-// the KPI. lecturers.id IS that code for everyone imported from the HR list;
-// lecturers created inside this app get a Date.now() id, which the receiving
-// system rejects on import — a loud, fixable failure, and a better outcome than
-// dropping them here, which would silently hand the KPI slot to the next author.
-function magvList(p: Paper): string {
+// the KPI. A lecturer with no magv on file falls back to their row id, which the
+// receiving system rejects by name — a loud, fixable failure, and a better
+// outcome than dropping them, which would silently hand the KPI slot to the next
+// author in the list.
+function magvList(p: Paper, magvById: Map<number, string>): string {
   const ordered = (p.authorLinks ?? [])
     .map((a) => a.lecturerId)
     .filter((id): id is number => id != null);
@@ -295,22 +295,27 @@ function magvList(p: Paper): string {
     ids.splice(ids.indexOf(credited), 1);
     ids.unshift(credited);
   }
-  return ids.join(";");
+  return ids.map((id) => magvById.get(id)?.trim() || String(id)).join(";");
 }
 
 // `papers` must already be filtered to what should be exported (the caller drops
-// anything not accepted/published). `today` is "YYYY-MM-DD".
-export function buildPapersImportXlsx(papers: Paper[], today: string): Buffer {
+// anything not accepted/published). `today` is "YYYY-MM-DD". `magvById` maps
+// lecturer id -> university staff code.
+export function buildPapersImportXlsx(
+  papers: Paper[],
+  today: string,
+  magvById: Map<number, string>
+): Buffer {
   const rows = [PAPER_IMPORT_HEADERS];
   for (const p of [...papers].sort((a, b) => b.year - a.year || b.id - a.id)) {
     rows.push([
       p.title,
       pubDate(p, today),
       p.venue ?? "",
-      "", // Vol/No/pp — not tracked here
+      p.volNoPp ?? "",
       p.url || (p.doi ? `https://doi.org/${p.doi}` : ""),
-      "", // full-text PDF link — not tracked here
-      magvList(p),
+      p.pdfUrl ?? "",
+      magvList(p, magvById),
       "", // student MSSV — not tracked here
       "", // Vietnamese title — not tracked here
       LINH_VUC_CNTT,
@@ -325,3 +330,19 @@ export function buildPapersImportXlsx(papers: Paper[], today: string): Buffer {
     { name: "Danh mục tham khảo", rows: referenceRows() },
   ]);
 }
+
+// Which required cells the receiving system would reject, per paper. The export
+// UI surfaces this so the gaps get fixed in the app instead of being discovered
+// row-by-row in the import report.
+export function missingImportFields(p: Paper, magvById: Map<number, string>): string[] {
+  const gaps: string[] = [];
+  if (!p.venue?.trim()) gaps.push("Tạp chí/Hội nghị");
+  if (!p.volNoPp?.trim()) gaps.push("Vol/No/pp");
+  if (!p.url && !p.doi) gaps.push("Link tham chiếu");
+  if (!p.pdfUrl?.trim()) gaps.push("Link toàn văn PDF");
+  // Caller replaces this with the actual names (it has the lecturer list).
+  if ((p.lecturerIds ?? []).some((id) => !magvById.get(id)?.trim())) gaps.push(MISSING_MAGV);
+  return gaps;
+}
+
+export const MISSING_MAGV = "Mã GV";

@@ -19,6 +19,7 @@ export interface Lecturer {
   avatarUrl?: string | null; // profile photo URL (scraped from the faculty site); null -> initials fallback
   excludedFromKpi?: boolean;  // true -> excluded from every aggregate KPI statistic
   hiddenFromHub?: boolean;    // true -> hidden from the public /hub/lecturers directory
+  magv?: string;              // university staff code — required by the .xlsx publication export
 }
 
 export const ACADEMIC_RANK_LABELS: Record<AcademicRank, string> = {
@@ -195,6 +196,9 @@ export interface Paper {
   isCorrespondingAuthor?: boolean;
   quartile?: string | null;        // Q1..Q4 snapshot; null -> fall back to venue rank
   submissionStatus?: SubmissionStatus;
+  // Both required by the university's publication import; nothing else uses them.
+  volNoPp?: string;                // "Vol.12, No.3, pp.45-58"
+  pdfUrl?: string;                 // full-text PDF link
 }
 
 export const LECTURER_TITLE_LABELS: Record<LecturerTitle, string> = {

@@ -46,6 +46,7 @@ const emptyForm = {
   boMonId: "" as string,
   department: "Khoa Khoa học máy tính",
   phone: "",
+  magv: "",
 };
 
 export function LecturerForm({
@@ -68,6 +69,7 @@ export function LecturerForm({
         boMonId: editingLecturer.boMonId != null ? String(editingLecturer.boMonId) : "",
         department: editingLecturer.department,
         phone: editingLecturer.phone || "",
+        magv: editingLecturer.magv || "",
       });
     } else {
       setForm(emptyForm);
@@ -97,6 +99,7 @@ export function LecturerForm({
       phone: form.phone.trim() || undefined,
       academicRank: form.academicRank,
       boMonId: form.boMonId ? Number(form.boMonId) : null,
+      magv: form.magv.trim(),
     };
 
     onSave(lecturer);
@@ -186,6 +189,22 @@ export function LecturerForm({
                 className="h-11"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold font-heading">
+              Mã giảng viên (magv)
+            </label>
+            <Input
+              placeholder="VD: 80273"
+              value={form.magv}
+              onChange={(e) => setForm({ ...form, magv: e.target.value })}
+              className="h-11"
+            />
+            <p className="text-xs text-muted-foreground">
+              Mã cán bộ của trường. Bắt buộc để xuất Excel nộp lên hệ thống quản lý khoa học —
+              thiếu mã thì mọi bài báo của giảng viên này sẽ bị từ chối khi import.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
