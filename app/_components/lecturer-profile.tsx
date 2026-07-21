@@ -11,6 +11,7 @@ import {
 import { getVenueRankBucket, getVenueRankShort, isVenueScopus } from "@/lib/venues";
 import { LECTURER_TITLE_LABELS, ACADEMIC_RANK_LABELS } from "@/lib/data";
 import { PublicationList } from "@/app/_components/publication-list";
+import { ExportPapersButton } from "@/app/_components/export-papers-button";
 import type { LecturerProfile } from "@/lib/profile";
 import type { DevelopmentStatus } from "@/lib/queries/development";
 
@@ -156,7 +157,10 @@ export function LecturerProfile({ data, backHref }: { data: LecturerProfile; bac
 
       {/* Papers */}
       <section className="space-y-3">
-        <h2 className="font-heading font-semibold flex items-center gap-2"><FileText className="size-5 text-primary" /> Danh sách công bố ({papers.length})</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-heading font-semibold flex items-center gap-2"><FileText className="size-5 text-primary" /> Danh sách công bố ({papers.length})</h2>
+          <ExportPapersButton lecturerId={lecturer.id} />
+        </div>
         <PublicationList
           items={papers.map((p) => ({
             id: p.id,

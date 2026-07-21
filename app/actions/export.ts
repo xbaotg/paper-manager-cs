@@ -1,7 +1,8 @@
 "use server";
 
-import { requireUser, requireManager } from "@/lib/dal";
-import { listPapers, getPapersByLecturer } from "@/lib/queries/papers";
+import { redirect } from "next/navigation";
+import { requireUser, canManage, homeForUser } from "@/lib/dal";
+import { getPapersByLecturer } from "@/lib/queries/papers";
 import { getLecturerById } from "@/lib/queries/lecturers";
 import { countsAsPublication } from "@/lib/data";
 import { buildPapersImportXlsx } from "@/lib/xlsx-export";
@@ -16,31 +17,36 @@ function slug(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-// Papers as the university import template (.xlsx), base64-encoded so it can come
-// back through a server action. `lecturerId` omitted = every paper in the system.
-// Only accepted/published papers are exported — in-review and rejected ones have
+// One lecturer's papers as the university import template (.xlsx), base64-encoded
+// so it can come back through a server action. Always scoped to a single
+// lecturer — the receiving system tracks publications per person.
+// Only accepted/published papers are exported: in-review and rejected ones have
 // no business in the university's publication register.
 export async function exportPapersXlsxAction(
-  lecturerId?: number
+  lecturerId: number
 ): Promise<{ filename: string; base64: string; count: number }> {
   const user = await requireUser();
-  // Own papers need no elevation; every other scope (all papers, or another
-  // lecturer's) is manager-only.
-  if (lecturerId == null || lecturerId !== user.lecturerId) await requireManager();
+  const lecturer = getLecturerById(lecturerId);
+  if (!lecturer) throw new Error("Không tìm thấy giảng viên");
 
-  const papers = (lecturerId == null ? listPapers() : getPapersByLecturer(lecturerId)).filter((p) =>
+  // Your own papers, any manager, or a head within their own bộ môn.
+  const allowed =
+    lecturerId === user.lecturerId ||
+    canManage(user) ||
+    (user.role === "head" && user.boMonId != null && lecturer.boMonId === user.boMonId);
+  if (!allowed) redirect(await homeForUser(user));
+
+  const papers = getPapersByLecturer(lecturerId).filter((p) =>
     countsAsPublication(p.submissionStatus)
   );
 
   const today = new Date().toISOString().slice(0, 10);
-  const who =
-    lecturerId == null ? "tat-ca" : slug(getLecturerById(lecturerId)?.name ?? String(lecturerId));
   const file = buildPapersImportXlsx(papers, today);
 
-  await logAction("papers.export_xlsx", { lecturerId: lecturerId ?? null, papers: papers.length });
+  await logAction("papers.export_xlsx", { lecturerId, papers: papers.length });
 
   return {
-    filename: `Bai-bao-${who}-${today}.xlsx`,
+    filename: `Bai-bao-${slug(lecturer.name) || lecturerId}-${today}.xlsx`,
     base64: file.toString("base64"),
     count: papers.length,
   };

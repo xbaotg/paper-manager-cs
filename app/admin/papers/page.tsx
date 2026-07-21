@@ -57,7 +57,6 @@ import {
   isPendingSubmission,
 } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
-import { ExportPapersButton } from "@/app/_components/export-papers-button";
 import { getVenueRankShort, getVenueRankBucket, hydrateVenues } from "@/lib/venues";
 import { getDatabase, addPaperServer, updatePaperServer, deletePaperServer, updatePaperStatusServer } from "@/app/actions";
 
@@ -299,15 +298,6 @@ export default function PapersPage() {
             <GraduationCap className="size-4" data-icon="inline-start" />
             Nhập tự động (OpenAlex/Scholar)
           </Button>
-          {/* Scope follows the lecturer filter: no filter = the whole faculty. */}
-          <ExportPapersButton
-            lecturerId={filterLecturer}
-            label={
-              filterLecturer != null
-                ? `Xuất Excel (${lecturerMap[filterLecturer]?.name ?? "GV đã lọc"})`
-                : "Xuất Excel (mẫu import)"
-            }
-          />
           <Button
             className="cursor-pointer bg-cta text-cta-foreground hover:bg-cta/90"
             onClick={() => {

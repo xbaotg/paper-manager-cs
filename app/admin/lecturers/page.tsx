@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { ExportPapersButton } from "@/app/_components/export-papers-button";
 import { LecturerForm } from "../_components/lecturer-form";
 import { LecturerAttributionDialog } from "../_components/lecturer-attribution-dialog";
 import { ConfirmDialog } from "../_components/confirm-dialog";
@@ -299,6 +300,7 @@ export default function LecturersPage() {
                         >
                           <ScrollText className="size-4" />
                         </Link>
+                        <ExportPapersButton lecturerId={lecturer.id} iconOnly />
                         <Button
                           variant="ghost"
                           size="icon-sm"
