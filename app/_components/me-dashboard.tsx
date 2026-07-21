@@ -35,6 +35,7 @@ import {
   isPendingSubmission,
 } from "@/lib/data";
 import { SubmissionStatusBadge } from "@/app/_components/submission-status-badge";
+import { ExportPapersButton } from "@/app/_components/export-papers-button";
 
 export function MeDashboard({
   lecturerId,
@@ -146,6 +147,7 @@ export function MeDashboard({
           >
             <GraduationCap className="size-4" /> Nhập tự động (OpenAlex/Scholar)
           </Button>
+          <ExportPapersButton lecturerId={lecturerId} />
           <Button
             onClick={() => { setEditing(null); setFormOpen(true); }}
             className="cursor-pointer gap-1.5"
