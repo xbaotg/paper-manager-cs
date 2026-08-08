@@ -6,6 +6,10 @@ export interface Venue {
   type: number; // 1=conference, 2=journal, 3=other
   rank: string;
   scopusIndexed: number;
+  /** "2169-3536" — required by STM and the D03 form. Optional here so the seed
+   *  list below stays as-is; the DB column defaults to '' and admin/OpenAlex
+   *  fill it in. */
+  issn?: string;
 }
 
 export const VENUES: Venue[] = [
@@ -5663,6 +5667,7 @@ export async function saveCustomVenue(v: Venue): Promise<void> {
       type: v.type,
       rank: v.rank,
       scopusIndexed: v.scopusIndexed,
+      issn: v.issn ?? "",
     });
     syncVenuesArray(list);
   } catch {}
@@ -5675,6 +5680,14 @@ export async function deleteVenue(code: string): Promise<void> {
     const list = await deleteVenueServer(code);
     syncVenuesArray(list);
   } catch {}
+}
+
+// Batch ISSN write from the admin fill. Like editVenue but one round trip for
+// the whole list, and it lets errors through so the page can report them.
+export async function applyVenueIssns(items: { code: string; issn: string }[]): Promise<void> {
+  if (typeof window === "undefined") return;
+  const { setVenueIssnsServer } = await import("@/app/actions");
+  syncVenuesArray(await setVenueIssnsServer(items));
 }
 
 export async function editVenue(code: string, overrides: Partial<Venue>): Promise<void> {

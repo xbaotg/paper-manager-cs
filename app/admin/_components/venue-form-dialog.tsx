@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Venue } from "@/lib/venues";
+import { issnByName, type IssnHit } from "@/lib/issn";
 
 interface VenueFormDialogProps {
   open: boolean;
@@ -23,6 +24,9 @@ export function VenueFormDialog({ open, onOpenChange, initialData, isNew, onSave
   const [customType, setCustomType] = useState(1);
   const [customRank, setCustomRank] = useState("Khác");
   const [customScopus, setCustomScopus] = useState(0);
+  const [customIssn, setCustomIssn] = useState("");
+  const [issnHits, setIssnHits] = useState<IssnHit[] | null>(null);
+  const [issnLoading, setIssnLoading] = useState(false);
 
   // Editing an EXISTING venue locks the code (papers reference it). A prefilled
   // draft (isNew) is still a create, so its code stays editable.
@@ -30,21 +34,39 @@ export function VenueFormDialog({ open, onOpenChange, initialData, isNew, onSave
 
   useEffect(() => {
     if (open) {
+      setIssnHits(null);
       if (initialData) {
         setCustomCode(initialData.code || "");
         setCustomName(initialData.nameEn || "");
         setCustomType(initialData.type || 1);
         setCustomRank(initialData.rank || "Khác");
         setCustomScopus(initialData.scopusIndexed || 0);
+        setCustomIssn(initialData.issn || "");
       } else {
         setCustomCode("");
         setCustomName("");
         setCustomType(1);
         setCustomRank("Khác");
         setCustomScopus(0);
+        setCustomIssn("");
       }
     }
   }, [open, initialData]);
+
+  // Suggest ISSNs for the name typed above. Several journals can share a name
+  // ("Informatica"), so this offers the candidates and lets a human choose
+  // rather than guessing — the batch fill on the venue list already took every
+  // case that could be decided automatically.
+  async function handleFindIssn() {
+    setIssnLoading(true);
+    try {
+      const hits = await issnByName(customName);
+      setIssnHits(hits);
+      if (hits.length === 1) setCustomIssn(hits[0].issn);
+    } finally {
+      setIssnLoading(false);
+    }
+  }
 
   function handleSave() {
     if (!customCode.trim() || !customName.trim()) {
@@ -59,7 +81,8 @@ export function VenueFormDialog({ open, onOpenChange, initialData, isNew, onSave
       nameVi: customName.trim(),
       type: customType,
       rank: customRank,
-      scopusIndexed: customScopus
+      scopusIndexed: customScopus,
+      issn: customIssn.trim()
     };
 
     onSave(result, !isEditing);
@@ -132,6 +155,49 @@ export function VenueFormDialog({ open, onOpenChange, initialData, isNew, onSave
               <option value="Q3">Q3</option>
               <option value="Q4">Q4</option>
             </select>
+          </div>
+          <div className="grid gap-2">
+            <label className="text-sm font-medium">ISSN</label>
+            <div className="flex gap-2">
+              <Input
+                value={customIssn}
+                onChange={(e) => setCustomIssn(e.target.value)}
+                placeholder="2169-3536"
+                className="font-mono"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleFindIssn}
+                disabled={issnLoading || customName.trim().length < 3}
+                className="shrink-0"
+              >
+                {issnLoading ? "Đang tra…" : "Tra ISSN"}
+              </Button>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Dùng cho form STM và mẫu D03. Tra theo tên hiển thị ở trên (nguồn: OpenAlex).
+            </span>
+            {issnHits?.length === 0 && (
+              <span className="text-xs text-amber-600">Không tìm thấy tạp chí nào khớp tên này.</span>
+            )}
+            {!!issnHits?.length && (
+              <div className="flex flex-col gap-1">
+                {issnHits.map((h) => (
+                  <button
+                    key={h.issn}
+                    type="button"
+                    onClick={() => setCustomIssn(h.issn)}
+                    className={`flex items-baseline gap-2 rounded-md border px-2 py-1 text-left text-xs hover:bg-muted ${
+                      h.issn === customIssn ? "border-primary bg-primary/5" : "border-transparent"
+                    }`}
+                  >
+                    <span className="font-mono shrink-0">{h.issn}</span>
+                    <span className="truncate text-muted-foreground">{h.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter>

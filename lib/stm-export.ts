@@ -54,7 +54,8 @@ export function stmRows(papers: Paper[]): StmRow[] {
     .filter((p) => countsAsPublication(p.submissionStatus))
     .sort((a, b) => b.year - a.year || b.id - a.id)
     .map((p) => {
-      const venueName = getVenueByCode(p.venue)?.nameEn?.trim() || p.venue;
+      const venue = getVenueByCode(p.venue);
+      const venueName = venue?.nameEn?.trim() || p.venue;
       const link = p.url || (p.doi ? `https://doi.org/${p.doi}` : "");
       return {
         id: p.id,
@@ -62,9 +63,11 @@ export function stmRows(papers: Paper[]): StmRow[] {
         tacGia: p.authors?.trim() ?? "",
         nam: String(p.year),
         tenCongTrinh: p.title,
-        // ISSN is a property of the journal and we don't keep it — STM requires
-        // it, so the UI flags the gap rather than shipping a wrong number.
-        issn: "",
+        // ISSN belongs to the journal, so it comes from the venue catalog
+        // ("Quản lý tạp chí" fills it, by hand or from OpenAlex). Still empty
+        // for venues nobody has filled in — the UI flags that rather than
+        // shipping a wrong number.
+        issn: venue?.issn?.trim() ?? "",
         phanLoai:
           (p.quartile || getVenueRankShort(p.venue) || (isVenueScopus(p.venue) ? "Scopus" : "")).trim(),
         // The form has no venue field at all, so the journal/conference name (plus

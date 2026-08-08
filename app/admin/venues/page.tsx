@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Building2, BookOpen, Search, Plus, Trash2, Edit, ChevronLeft, ChevronRight, AlertTriangle 
+import {
+  Building2, BookOpen, Search, Plus, Trash2, Edit, ChevronLeft, ChevronRight, AlertTriangle, Barcode
 } from "lucide-react";
+import { toast } from "sonner";
+import { resolveVenueIssn } from "@/lib/issn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -16,14 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { VenueFormDialog } from "../_components/venue-form-dialog";
-import { 
-  VENUES, 
-  hydrateVenues, 
-  deleteVenue, 
-  saveCustomVenue, 
+import {
+  VENUES,
+  hydrateVenues,
+  deleteVenue,
+  saveCustomVenue,
   editVenue,
-  type Venue 
+  applyVenueIssns,
+  type Venue
 } from "@/lib/venues";
+import { venuesMissingIssnServer } from "@/app/actions";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -40,6 +44,9 @@ export default function VenuesManagementPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
 
+  // null = idle, otherwise "<đã xong>/<tổng>" of the running ISSN fill
+  const [issnProgress, setIssnProgress] = useState<{ done: number; total: number } | null>(null);
+
   useEffect(() => {
     hydrateVenues().finally(() => {
       setForceRender((c) => c + 1);
@@ -52,10 +59,11 @@ export default function VenuesManagementPage() {
     forceRender; // Dependency simply to force re-evaluation of the static VENUES reference
     const q = search.toLowerCase().trim();
     if (!q) return VENUES;
-    return VENUES.filter(v => 
-      v.code.toLowerCase().includes(q) || 
-      v.nameEn.toLowerCase().includes(q) || 
-      v.nameVi.toLowerCase().includes(q)
+    return VENUES.filter(v =>
+      v.code.toLowerCase().includes(q) ||
+      v.nameEn.toLowerCase().includes(q) ||
+      v.nameVi.toLowerCase().includes(q) ||
+      (v.issn ?? "").includes(q)
     );
   }, [search, forceRender]);
 
@@ -98,10 +106,53 @@ export default function VenuesManagementPage() {
         nameVi: venue.nameVi,
         type: venue.type,
         rank: venue.rank,
-        scopusIndexed: venue.scopusIndexed
+        scopusIndexed: venue.scopusIndexed,
+        issn: venue.issn ?? ""
       });
     }
     setForceRender(c => c + 1);
+  }
+
+  // Fill the ISSN of every journal that has papers but no number yet, from
+  // OpenAlex. Only confident matches are written (a DOI published there, or an
+  // exact title match) — the rest stay empty for someone to type in, because a
+  // wrong ISSN in an official form is worse than a blank one.
+  async function handleFillIssn() {
+    let targets: { code: string; nameEn: string; doi: string }[];
+    try {
+      targets = await venuesMissingIssnServer();
+    } catch {
+      toast.error("Không tải được danh sách tạp chí.");
+      return;
+    }
+    if (targets.length === 0) {
+      toast.success("Mọi tạp chí đang dùng đều đã có ISSN.");
+      return;
+    }
+
+    setIssnProgress({ done: 0, total: targets.length });
+    const found: { code: string; issn: string }[] = [];
+    // ponytail: sequential — ~60 journals, and OpenAlex asks callers not to
+    // hammer it. Batch in parallel only if the catalog grows an order of magnitude.
+    for (const [i, t] of targets.entries()) {
+      const { issn } = await resolveVenueIssn(t.nameEn, t.doi);
+      if (issn) found.push({ code: t.code, issn });
+      setIssnProgress({ done: i + 1, total: targets.length });
+    }
+
+    try {
+      if (found.length) await applyVenueIssns(found);
+      const missed = targets.length - found.length;
+      toast.success(
+        `Đã điền ISSN cho ${found.length}/${targets.length} tạp chí.` +
+          (missed ? ` ${missed} tạp chí không tra được — tự điền trong phần chỉnh sửa.` : "")
+      );
+      setForceRender(c => c + 1);
+    } catch {
+      toast.error("Tra được ISSN nhưng lưu thất bại.");
+    } finally {
+      setIssnProgress(null);
+    }
   }
 
   if (!loaded) return null;
@@ -116,10 +167,22 @@ export default function VenuesManagementPage() {
             Tổng cộng: {VENUES.length} nền tảng xuất bản
           </p>
         </div>
-        <Button onClick={handleAdd} className="gap-2 shrink-0">
-          <Plus className="size-4" />
-          Thêm nền tảng mới
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleFillIssn}
+            disabled={!!issnProgress}
+            className="gap-2"
+            title="Tra ISSN của các tạp chí đang dùng từ OpenAlex và điền tự động"
+          >
+            <Barcode className="size-4" />
+            {issnProgress ? `Đang tra ISSN… ${issnProgress.done}/${issnProgress.total}` : "Tự điền ISSN"}
+          </Button>
+          <Button onClick={handleAdd} className="gap-2">
+            <Plus className="size-4" />
+            Thêm nền tảng mới
+          </Button>
+        </div>
       </div>
 
       {/* Toolbar */}
@@ -169,6 +232,7 @@ export default function VenuesManagementPage() {
               <tr>
                 <th className="px-5 py-4 w-12 text-center rounded-tl-xl border-b">#</th>
                 <th className="px-5 py-4 border-b">Mã / Tên hiển thị</th>
+                <th className="px-5 py-4 border-b text-center">ISSN</th>
                 <th className="px-5 py-4 border-b text-center">Rank</th>
                 <th className="px-5 py-4 border-b text-center">Scopus</th>
                 <th className="px-5 py-4 border-b text-center">Type</th>
@@ -187,6 +251,13 @@ export default function VenuesManagementPage() {
                       <div className="text-muted-foreground text-xs mt-1 truncate max-w-[300px] lg:max-w-[450px]">
                         {v.nameEn}
                       </div>
+                    </td>
+                    <td className="px-5 py-4 text-center whitespace-nowrap">
+                      {v.issn ? (
+                        <span className="font-mono text-xs">{v.issn}</span>
+                      ) : (
+                        <span className="text-muted-foreground/50">-</span>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-center">
                       {v.rank ? (
@@ -234,7 +305,7 @@ export default function VenuesManagementPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-5 py-12 text-center text-muted-foreground">
                     Không tìm thấy hội nghị hay tạp chí nào khớp với tiêu chí.
                   </td>
                 </tr>

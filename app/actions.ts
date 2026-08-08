@@ -5,7 +5,7 @@ import { readDatabase, type DatabaseSchema } from "@/lib/db";
 import { createPaper, updatePaper, deletePaper, isPaperAuthor, updateCreditedLecturer, updatePaperSubmissionStatus, getPaperById, listPaperTitles } from "@/lib/queries/papers";
 import { createLecturer, updateLecturer, deleteLecturer, setLecturerKpiExcluded, setLecturerHiddenFromHub, setLecturerAvatar, getLecturerById } from "@/lib/queries/lecturers";
 import { setAlias } from "@/lib/queries/aliases";
-import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated } from "@/lib/queries/venues";
+import { listVenues, createCustomVenue, updateVenueByCode, deleteVenueByCode, ensureVenuesHydrated, listVenuesMissingIssn, setVenueIssns } from "@/lib/queries/venues";
 import { getCurrentUser, requireManager, canManage } from "@/lib/dal";
 import { logAction } from "@/lib/logger";
 import { countsAsPublication } from "@/lib/data";
@@ -270,6 +270,25 @@ export async function updateVenueServer(
   await requireAuth();
   updateVenueByCode(code, overrides);
   await logAction("venue.update", { code, overrides });
+  ensureVenuesHydrated(true);
+  revalidatePath("/", "layout");
+  return listVenues();
+}
+
+// Journals with papers but no ISSN yet, each with a DOI published there when we
+// have one. The admin page resolves these against OpenAlex in the browser (it
+// is CORS-friendly, so no server-side fetch) and posts the results back.
+export async function venuesMissingIssnServer(): Promise<{ code: string; nameEn: string; doi: string }[]> {
+  await requireAuth();
+  return listVenuesMissingIssn();
+}
+
+// Write the resolved ISSNs in one go — 60 journals through updateVenueServer
+// would mean 60 full-layout revalidations.
+export async function setVenueIssnsServer(items: { code: string; issn: string }[]): Promise<Venue[]> {
+  await requireAuth();
+  const n = setVenueIssns(items.filter((i) => i.code && i.issn.trim()));
+  await logAction("venue.issn_fill", { updated: n });
   ensureVenuesHydrated(true);
   revalidatePath("/", "layout");
   return listVenues();
