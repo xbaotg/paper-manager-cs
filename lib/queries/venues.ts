@@ -10,6 +10,7 @@ interface VenueRow {
   type: number;
   rank: string;
   scopus_indexed: number;
+  issn: string;
 }
 
 function toVenue(r: VenueRow): Venue {
@@ -21,6 +22,7 @@ function toVenue(r: VenueRow): Venue {
     type: r.type,
     rank: r.rank,
     scopusIndexed: r.scopus_indexed,
+    issn: r.issn ?? "",
   };
 }
 
@@ -62,8 +64,8 @@ export function createCustomVenue(v: Omit<Venue, "id">): Venue {
   const maxRow = db.prepare("SELECT COALESCE(MAX(id), 0) AS m FROM venues").get() as { m: number };
   const id = maxRow.m + 1;
   db.prepare(
-    "INSERT INTO venues (id, code, name_en, name_vi, type, rank, scopus_indexed) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(id, v.code, v.nameEn ?? "", v.nameVi ?? "", v.type ?? 1, v.rank ?? "", v.scopusIndexed ?? 0);
+    "INSERT INTO venues (id, code, name_en, name_vi, type, rank, scopus_indexed, issn) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(id, v.code, v.nameEn ?? "", v.nameVi ?? "", v.type ?? 1, v.rank ?? "", v.scopusIndexed ?? 0, v.issn ?? "");
   return { id, ...v };
 }
 
@@ -80,11 +82,44 @@ export function updateVenueByCode(code: string, overrides: Partial<Omit<Venue, "
     type: overrides.type ?? existing.type,
     rank: overrides.rank ?? existing.rank,
     scopus_indexed: overrides.scopusIndexed ?? existing.scopus_indexed,
+    issn: overrides.issn ?? existing.issn ?? "",
   };
   db.prepare(
-    "UPDATE venues SET name_en = ?, name_vi = ?, type = ?, rank = ?, scopus_indexed = ? WHERE code = ?"
-  ).run(merged.name_en, merged.name_vi, merged.type, merged.rank, merged.scopus_indexed, code);
+    "UPDATE venues SET name_en = ?, name_vi = ?, type = ?, rank = ?, scopus_indexed = ?, issn = ? WHERE code = ?"
+  ).run(merged.name_en, merged.name_vi, merged.type, merged.rank, merged.scopus_indexed, merged.issn, code);
   return toVenue(merged);
+}
+
+/** Venues still missing an ISSN that at least one paper actually uses, newest
+ *  first by paper count, each with one DOI published there when we have any —
+ *  a DOI names its journal outright, which beats matching on title. Only
+ *  journals: the STM ISSN field is the journal form's, and conference
+ *  proceedings carry an ISBN instead. */
+export function listVenuesMissingIssn(): { code: string; nameEn: string; doi: string }[] {
+  return getDb()
+    .prepare(
+      `SELECT v.code AS code,
+              v.name_en AS nameEn,
+              COALESCE(MAX(CASE WHEN p.doi LIKE '10.%' THEN p.doi END), '') AS doi
+         FROM venues v
+         JOIN papers p ON p.venue_code = v.code
+        WHERE COALESCE(v.issn, '') = '' AND v.type = 2
+        GROUP BY v.code
+        ORDER BY COUNT(*) DESC, v.code ASC`
+    )
+    .all() as { code: string; nameEn: string; doi: string }[];
+}
+
+/** Bulk ISSN write — one statement per venue, one transaction, so filling ~60
+ *  journals costs a single round trip instead of 60 revalidations. */
+export function setVenueIssns(items: { code: string; issn: string }[]): number {
+  const db = getDb();
+  const upd = db.prepare("UPDATE venues SET issn = ? WHERE code = ?");
+  let n = 0;
+  db.transaction(() => {
+    for (const it of items) n += upd.run(it.issn.trim(), it.code).changes;
+  })();
+  return n;
 }
 
 // Hard-delete a venue. Papers keep their venue_code string; their rank lookup

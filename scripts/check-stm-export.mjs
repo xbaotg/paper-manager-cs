@@ -11,6 +11,11 @@ registerHooks({
 });
 
 const { stmRows, STM_FIELDS } = await import("../lib/stm-export.ts");
+const { VENUES } = await import("../lib/venues.ts");
+
+// ISSN lives on the venue (admin fills it, by hand or from OpenAlex) — stand in
+// for that here so the lookup is exercised.
+VENUES.find((v) => v.code === "ACCESS").issn = "2169-3536";
 
 const base = { authors: "A, B", lecturerIds: [], submissionStatus: "published" };
 const papers = [
@@ -42,7 +47,8 @@ assert.equal(journal.phanLoai, "Q1");
 assert.equal(unknown.phanLoai, "", "unknown venue has no classification to offer");
 assert.equal(journal.nam, "2024");
 assert.equal(journal.tacGia, "A, B");
-assert.equal(journal.issn, "", "ISSN is not tracked — the UI flags it");
+assert.equal(journal.issn, "2169-3536", "ISSN comes from the paper's venue");
+assert.equal(unknown.issn, "", "a venue nobody filled in leaves it blank — the UI flags that");
 
 // Ghi chú carries what the STM form has no field for: venue, issue, link.
 assert.equal(journal.ghiChu, "IEEE Access — Vol.12, No.3, pp.45-58 — https://doi.org/10.1109/x");

@@ -485,6 +485,17 @@ const MIGRATIONS: Migration[] = [
       ).run();
     },
   },
+
+  // --- ISSN, kept on the venue ---
+  // STM marks ISSN required and the D03 form has a column for it. It identifies
+  // the journal, not the article, so one value per venue serves every paper
+  // published there. Filled from OpenAlex (lib/issn.ts) or typed in the admin.
+  {
+    id: "0020_venue_issn",
+    up: (db) => {
+      addColumnIfMissing(db, "venues", "issn", "issn TEXT NOT NULL DEFAULT ''");
+    },
+  },
 ];
 
 export function runMigrations(db: BetterSqlite3.Database): void {

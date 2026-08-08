@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS venues (
   name_vi        TEXT NOT NULL DEFAULT '',
   type           INTEGER NOT NULL DEFAULT 1,
   rank           TEXT NOT NULL DEFAULT '',
-  scopus_indexed INTEGER NOT NULL DEFAULT 0
+  scopus_indexed INTEGER NOT NULL DEFAULT 0,
+  issn           TEXT NOT NULL DEFAULT ''      -- STM / D03 require it; it is a property of the venue, not the paper
 );
 
 CREATE TABLE IF NOT EXISTS kpi_periods (

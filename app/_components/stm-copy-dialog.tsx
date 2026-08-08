@@ -189,7 +189,7 @@ export function StmCopyButton({
                               </button>
                             ) : (
                               <div className="px-2 py-1 text-sm italic text-muted-foreground">
-                                chưa có trong hệ thống — tự điền
+                                chưa có — điền ISSN cho tạp chí ở trang Quản lý tạp chí
                               </div>
                             )}
                           </div>

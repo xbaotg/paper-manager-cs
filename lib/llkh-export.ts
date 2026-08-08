@@ -207,7 +207,11 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   const { lecturerName, lecturerTitle, profile: P, papers, dateStr, forPdf } = input;
   const cls = classifyPapers(papers);
   const fullName = `${lecturerTitle ? lecturerTitle + ". " : ""}${lecturerName}`;
-  const isiFlag = (p: Paper) => (isVenueScopus(p.venue) ? "ISI" : "");
+  // 2.1 asks for "Số hiệu ISSN (ghi rõ thuộc ISI hay không)" — both parts in one
+  // cell; 2.2 wants the number alone. Venues without an ISSN yet fall back to
+  // the flag, which is what this column carried before.
+  const issnOf = (p: Paper) => getVenueByCode(p.venue)?.issn?.trim() ?? "";
+  const isiFlag = (p: Paper) => [issnOf(p), isVenueScopus(p.venue) ? "ISI" : ""].filter(Boolean).join(" — ");
   // 11.2 Hướng nghiên cứu — prefer the row list, fall back to the legacy string.
   const huongText = (P.huongNghienCuuList?.length
     ? P.huongNghienCuuList
@@ -353,7 +357,7 @@ export function buildLlkhHtml(input: LlkhExportInput): string {
   <p class="sub">2.1. Đăng trên tạp chí Quốc tế</p>
   ${pubTable(cls.journalsQT, journalCiteHead, "Số hiệu ISSN (ghi rõ thuộc ISI hay không)", "Điểm IF", isiFlag)}
   <p class="sub">2.2. Đăng trên tạp chí trong nước</p>
-  ${pubTable(cls.journalsTN, journalCiteHead, "Số hiệu ISSN", "Ghi chú", () => "")}
+  ${pubTable(cls.journalsTN, journalCiteHead, "Số hiệu ISSN", "Ghi chú", issnOf)}
   <p class="sub">2.3. Đăng trên kỷ yếu Hội nghị Quốc tế</p>
   ${pubTable(cls.confQT, confCiteHead, "Số hiệu ISBN", "Ghi chú", () => "")}
   <p class="sub">2.4. Đăng trên kỷ yếu Hội nghị trong nước</p>
