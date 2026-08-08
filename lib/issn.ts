@@ -2,8 +2,10 @@
 // import already queries, and it sends CORS headers, so this runs straight from
 // the admin page with no server route or API key of its own.
 //
-// ISSN identifies the journal, not the article: one lookup per venue fills the
-// STM and D03 field for every paper published there, past and future.
+// ISSN identifies the venue, not the article: one lookup fills the STM and D03
+// field for every paper published there, past and future. Conferences count too
+// — a proceedings series carries an ISSN (LNCS 0302-9743, CCIS 1865-0929), even
+// though publishers like ACM give their volumes an ISBN and no ISSN at all.
 //
 // Pure + fetch only, no app imports — scripts/check-issn.mjs runs it directly.
 
@@ -26,9 +28,15 @@ interface OaSource {
 }
 
 /** The linking ISSN when OpenAlex has one, else the first listed. STM's field
- *  takes a single number, so pick rather than join the print/electronic pair. */
+ *  takes a single number, so pick rather than join the print/electronic pair.
+ *
+ *  Preprint servers are refused outright: arXiv has an ISSN (2331-8422), papers
+ *  do get filed under an arXiv DOI, and that number would be flatly wrong on a
+ *  publication record — the venue is the conference or journal that accepted
+ *  the work, not the server it was posted to. */
 export function pickIssn(source: OaSource | null | undefined): string {
   const s = source;
+  if (s?.type === "repository") return "";
   const linking = typeof s?.issn_l === "string" ? s.issn_l.trim() : "";
   if (linking) return linking;
   const first = Array.isArray(s?.issn) ? String(s.issn[0] ?? "").trim() : "";

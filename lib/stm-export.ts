@@ -63,10 +63,11 @@ export function stmRows(papers: Paper[]): StmRow[] {
         tacGia: p.authors?.trim() ?? "",
         nam: String(p.year),
         tenCongTrinh: p.title,
-        // ISSN belongs to the journal, so it comes from the venue catalog
-        // ("Quản lý tạp chí" fills it, by hand or from OpenAlex). Still empty
-        // for venues nobody has filled in — the UI flags that rather than
-        // shipping a wrong number.
+        // ISSN belongs to the venue (a conference's is its proceedings
+        // series'), so it comes from the catalog — "Quản lý tạp chí" fills it,
+        // by hand or from OpenAlex. Empty for venues that have no ISSN at all
+        // (ACM issues an ISBN per volume) or that nobody has filled in yet; the
+        // UI flags that rather than shipping a wrong number.
         issn: venue?.issn?.trim() ?? "",
         phanLoai:
           (p.quartile || getVenueRankShort(p.venue) || (isVenueScopus(p.venue) ? "Scopus" : "")).trim(),
