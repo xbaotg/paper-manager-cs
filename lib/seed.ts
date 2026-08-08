@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import type BetterSqlite3 from "better-sqlite3";
 import { SAMPLE_LECTURERS, SAMPLE_PAPERS, academicRankFromTitle, type Lecturer, type Paper } from "./data";
 import { VENUES } from "./venues";
-import { dedupeAuthorLinks, type AuthorLink } from "./author-match";
+import { dedupeAuthorLinks, reconstructAuthorLinks, type AuthorLink } from "./author-match";
 
 const SEED_FLAG = "seeded_core_v1";
 
@@ -54,45 +54,80 @@ export function seedDatabase(db: BetterSqlite3.Database) {
 }
 
 // An earlier author-reconstruction bug, when editing a paper, left the byline name
-// ("Tien Do") as an external author AND appended the matched lecturer's full name
-// ("Đỗ Văn Tiến") as a separate internal chip — a visible duplicate once saved.
-// Collapse those twins once for every paper whose stored authors_json contains one.
-const AUTHOR_DEDUP_FLAG = "author_dups_cleaned_v1";
+// ("Tien Do") as an author AND added the matched lecturer's full name
+// ("Đỗ Văn Tiến") as a second chip — a visible duplicate once saved.
+//
+// v1 only scanned rows that already had an authors_json, which missed exactly the
+// papers written before that column existed — where the duplicate lives in the
+// flat `authors` string alone. v2 covers those too by rebuilding the links from
+// `authors` + paper_lecturers, and stores the result so a later edit round-trips
+// the byline instead of reconstructing (and re-appending) it.
+const AUTHOR_DEDUP_FLAG = "author_dups_cleaned_v2";
 
 function dedupePaperAuthors(db: BetterSqlite3.Database) {
   const done = db.prepare("SELECT value FROM meta WHERE key = ?").get(AUTHOR_DEDUP_FLAG);
   if (done) return;
-  const rows = db
-    .prepare("SELECT id, authors_json FROM papers WHERE authors_json IS NOT NULL AND authors_json != ''")
-    .all() as { id: number; authors_json: string }[];
+
+  const lecturers = db.prepare("SELECT * FROM lecturers").all() as Lecturer[];
+  const byPaper = new Map<number, number[]>();
+  for (const r of db.prepare("SELECT paper_id, lecturer_id FROM paper_lecturers").all() as {
+    paper_id: number;
+    lecturer_id: number;
+  }[]) {
+    byPaper.set(r.paper_id, [...(byPaper.get(r.paper_id) ?? []), r.lecturer_id]);
+  }
+
+  const rows = db.prepare("SELECT id, authors, authors_json FROM papers").all() as {
+    id: number;
+    authors: string;
+    authors_json: string;
+  }[];
   const upd = db.prepare("UPDATE papers SET authors = ?, authors_json = ? WHERE id = ?");
   const tx = db.transaction(() => {
     for (const r of rows) {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(r.authors_json);
-      } catch {
-        continue;
-      }
-      if (!Array.isArray(parsed) || parsed.length === 0) continue;
-      const links: AuthorLink[] = parsed
-        .map((a) => ({
-          name: String((a as { name?: unknown })?.name ?? "").trim(),
-          lecturerId:
-            (a as { lecturerId?: unknown })?.lecturerId != null
-              ? Number((a as { lecturerId: unknown }).lecturerId)
-              : null,
-        }))
-        .filter((a) => a.name);
+      const links = storedLinks(r.authors_json) ?? bylineLinks(r.authors, byPaper.get(r.id) ?? [], lecturers);
+      if (links.length === 0) continue;
       const deduped = dedupeAuthorLinks(links);
-      if (deduped.length < links.length) {
-        const authors = deduped.map((a) => a.name.trim()).filter(Boolean).join(", ");
-        upd.run(authors, JSON.stringify(deduped), r.id);
-      }
+      const authors = deduped.map((a) => a.name.trim()).filter(Boolean).join(", ");
+      // Only rows that actually carry a duplicate are rewritten. Backfilling
+      // authors_json everywhere else would freeze a reconstruction nobody asked
+      // for — and is unnecessary, since the collapse above now keeps the byline
+      // name on every save path.
+      if (authors !== r.authors) upd.run(authors, JSON.stringify(deduped), r.id);
     }
     db.prepare("INSERT INTO meta (key, value) VALUES (?, datetime('now'))").run(AUTHOR_DEDUP_FLAG);
   });
   tx();
+}
+
+function storedLinks(authorsJson: string): AuthorLink[] | null {
+  if (!authorsJson) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(authorsJson);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
+  return parsed
+    .map((a) => ({
+      name: String((a as { name?: unknown })?.name ?? "").trim(),
+      lecturerId:
+        (a as { lecturerId?: unknown })?.lecturerId != null
+          ? Number((a as { lecturerId: unknown }).lecturerId)
+          : null,
+    }))
+    .filter((a) => a.name);
+}
+
+// Links for a paper that predates authors_json. reconstructAuthorLinks appends a
+// chip for every linked lecturer it could not find in the byline — fine for the
+// editor, but here it would WRITE those Vietnamese names into the byline, which
+// is the very thing this migration cleans up. Keep only the byline's own names;
+// paper_lecturers still carries the KPI credit for the rest.
+function bylineLinks(authors: string, lecturerIds: number[], lecturers: Lecturer[]): AuthorLink[] {
+  const count = (authors || "").split(",").map((n) => n.trim()).filter(Boolean).length;
+  return reconstructAuthorLinks(authors, lecturerIds, lecturers).slice(0, count);
 }
 
 // The legacy JSON catalog predates the submission pipeline, so imported papers

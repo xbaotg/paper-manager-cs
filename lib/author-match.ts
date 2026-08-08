@@ -99,25 +99,33 @@ export function reconstructAuthorLinks(
   return links;
 }
 
-// Collapse the specific duplicate the old reconstruction produced: an external
-// byline entry ("Tien Do") plus a separate internal entry carrying the lecturer's
-// full name ("Đỗ Văn Tiến") for the SAME person. Links the byline name in place
-// and drops the full-name twin. No-op when there is no such pair. Order preserved.
+// Collapse the duplicate the old reconstruction produced: the byline entry
+// ("Tien Do") plus a second entry carrying the lecturer's full Vietnamese name
+// ("Đỗ Văn Tiến") for the SAME person.
+//
+// The EARLIER entry wins — it sits where the real byline put it, while the twin
+// was appended at the end. Position decides, not the link: which twin holds the
+// lecturerId flipped when reconstructAuthorLinks learned to link the byline name
+// in place (it used to leave that one external and link only the appended full
+// name), so keying on "drop the internal one" now deletes the byline name and
+// keeps the Vietnamese duplicate. Order preserved; no-op without such a pair.
 export function dedupeAuthorLinks(input: AuthorLink[]): AuthorLink[] {
   const links = input.map((a) => ({ ...a }));
   const removed = new Set<number>();
-  links.forEach((internal, i) => {
-    if (internal.lecturerId == null || removed.has(i)) return;
-    for (let j = 0; j < links.length; j++) {
-      if (j === i || removed.has(j)) continue;
-      const ext = links[j];
-      if (ext.lecturerId != null) continue; // only merge an external twin
-      if (linkScore(ext.name, internal.name) >= LINK_THRESHOLD) {
-        ext.lecturerId = internal.lecturerId; // keep the byline name + position
-        removed.add(i); // drop the appended full-name duplicate
-        break;
-      }
+  for (let i = 0; i < links.length; i++) {
+    if (removed.has(i)) continue;
+    for (let j = i + 1; j < links.length; j++) {
+      if (removed.has(j)) continue;
+      const a = links[i];
+      const b = links[j];
+      // Two unlinked lookalikes are just two authors; only a lecturer link makes
+      // them provably the same person (and two links must agree).
+      if (a.lecturerId == null && b.lecturerId == null) continue;
+      if (a.lecturerId != null && b.lecturerId != null && a.lecturerId !== b.lecturerId) continue;
+      if (linkScore(b.name, a.name) < LINK_THRESHOLD) continue;
+      a.lecturerId ??= b.lecturerId;
+      removed.add(j);
     }
-  });
+  }
   return links.filter((_, i) => !removed.has(i));
 }
