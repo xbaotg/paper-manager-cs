@@ -113,26 +113,28 @@ export default function VenuesManagementPage() {
     setForceRender(c => c + 1);
   }
 
-  // Fill the ISSN of every journal that has papers but no number yet, from
+  // Fill the ISSN of every venue that has papers but no number yet, from
   // OpenAlex. Only confident matches are written (a DOI published there, or an
   // exact title match) — the rest stay empty for someone to type in, because a
-  // wrong ISSN in an official form is worse than a blank one.
+  // wrong ISSN in an official form is worse than a blank one. Conferences take
+  // the ISSN of their proceedings series; the ones without a series (ACM issues
+  // an ISBN per volume) just come back empty.
   async function handleFillIssn() {
     let targets: { code: string; nameEn: string; doi: string }[];
     try {
       targets = await venuesMissingIssnServer();
     } catch {
-      toast.error("Không tải được danh sách tạp chí.");
+      toast.error("Không tải được danh sách tạp chí / hội nghị.");
       return;
     }
     if (targets.length === 0) {
-      toast.success("Mọi tạp chí đang dùng đều đã có ISSN.");
+      toast.success("Mọi tạp chí / hội nghị đang dùng đều đã có ISSN.");
       return;
     }
 
     setIssnProgress({ done: 0, total: targets.length });
     const found: { code: string; issn: string }[] = [];
-    // ponytail: sequential — ~60 journals, and OpenAlex asks callers not to
+    // ponytail: sequential — ~130 venues, and OpenAlex asks callers not to
     // hammer it. Batch in parallel only if the catalog grows an order of magnitude.
     for (const [i, t] of targets.entries()) {
       const { issn } = await resolveVenueIssn(t.nameEn, t.doi);
@@ -144,8 +146,8 @@ export default function VenuesManagementPage() {
       if (found.length) await applyVenueIssns(found);
       const missed = targets.length - found.length;
       toast.success(
-        `Đã điền ISSN cho ${found.length}/${targets.length} tạp chí.` +
-          (missed ? ` ${missed} tạp chí không tra được — tự điền trong phần chỉnh sửa.` : "")
+        `Đã điền ISSN cho ${found.length}/${targets.length} tạp chí / hội nghị.` +
+          (missed ? ` ${missed} chỗ không tra được (nhiều hội nghị chỉ có ISBN) — tự điền trong phần chỉnh sửa.` : "")
       );
       setForceRender(c => c + 1);
     } catch {
@@ -173,7 +175,7 @@ export default function VenuesManagementPage() {
             onClick={handleFillIssn}
             disabled={!!issnProgress}
             className="gap-2"
-            title="Tra ISSN của các tạp chí đang dùng từ OpenAlex và điền tự động"
+            title="Tra ISSN của các tạp chí / hội nghị đang dùng từ OpenAlex và điền tự động"
           >
             <Barcode className="size-4" />
             {issnProgress ? `Đang tra ISSN… ${issnProgress.done}/${issnProgress.total}` : "Tự điền ISSN"}

@@ -90,11 +90,14 @@ export function updateVenueByCode(code: string, overrides: Partial<Omit<Venue, "
   return toVenue(merged);
 }
 
-/** Venues still missing an ISSN that at least one paper actually uses, newest
- *  first by paper count, each with one DOI published there when we have any —
- *  a DOI names its journal outright, which beats matching on title. Only
- *  journals: the STM ISSN field is the journal form's, and conference
- *  proceedings carry an ISBN instead. */
+/** Venues still missing an ISSN that at least one paper actually uses, busiest
+ *  first, each with one DOI published there when we have any — a DOI names its
+ *  venue outright, which beats matching on title.
+ *
+ *  Conferences are included: their proceedings series has an ISSN (LNCS, CCIS,
+ *  the IEEE per-edition sources), and for the ones that genuinely have none —
+ *  ACM gives volumes an ISBN instead — the lookup simply comes back empty.
+ *  arXiv DOIs are the trap here, and pickIssn refuses those. */
 export function listVenuesMissingIssn(): { code: string; nameEn: string; doi: string }[] {
   return getDb()
     .prepare(
@@ -103,7 +106,7 @@ export function listVenuesMissingIssn(): { code: string; nameEn: string; doi: st
               COALESCE(MAX(CASE WHEN p.doi LIKE '10.%' THEN p.doi END), '') AS doi
          FROM venues v
          JOIN papers p ON p.venue_code = v.code
-        WHERE COALESCE(v.issn, '') = '' AND v.type = 2
+        WHERE COALESCE(v.issn, '') = ''
         GROUP BY v.code
         ORDER BY COUNT(*) DESC, v.code ASC`
     )
